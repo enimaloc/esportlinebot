@@ -17,14 +17,15 @@ repositories {
     maven {
         url 'https://m2.enimaloc.fr/maven'
     }
+    mavenLocal()
 }
 
 dependencies {
-    implementation('net.dv8tion:JDA:4.3.0_346') {
+    implementation('net.dv8tion:JDA:5.0.0-alpha.1') {
         exclude module: 'opus-java'
     }
     implementation('fr.enimaloc.enutils:classes:0.0.3')
-    implementation 'pw.chew:jda-chewtils:1.22.0'
+    implementation 'pw.chew:jda-chewtils:1.custom'
 }
 
 jar {

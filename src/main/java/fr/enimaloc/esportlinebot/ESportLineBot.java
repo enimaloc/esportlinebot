@@ -15,23 +15,21 @@ import fr.enimaloc.esportlinebot.commands.ForceDrawCommand;
 import fr.enimaloc.esportlinebot.commands.StatusCommand;
 import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.RawGatewayEvent;
 import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceJoinEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageDeleteEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import net.dv8tion.jda.api.utils.data.DataArray;
 import net.dv8tion.jda.api.utils.data.DataObject;
-import net.dv8tion.jda.internal.requests.RestActionImpl;
-import net.dv8tion.jda.internal.requests.Route;
 import org.jetbrains.annotations.NotNull;
 import fr.enimaloc.enutils.classes.NumberUtils;
 
@@ -168,6 +166,7 @@ public class ESportLineBot extends ListenerAdapter {
                       .disableCache(Arrays.asList(CacheFlag.values()))
                       .enableCache(CacheFlag.MEMBER_OVERRIDES, CacheFlag.VOICE_STATE)
                       .setMemberCachePolicy(MemberCachePolicy.ALL)
+                      .setRawEventsEnabled(true)
                       .build();
         } catch (LoginException e) {
             e.printStackTrace();
@@ -266,7 +265,7 @@ public class ESportLineBot extends ListenerAdapter {
                     );
                 } else {
                     if (permissionOverride != null && permissionOverride.getDenied()
-                                                                        .contains(Permission.MESSAGE_WRITE)) {
+                                                                        .contains(Permission.MESSAGE_SEND)) {
                         canWrite(textChannel, everyone, true);
                         for (PermissionOverride override : textChannel.getMemberPermissionOverrides()) {
                             override.delete()
@@ -285,7 +284,7 @@ public class ESportLineBot extends ListenerAdapter {
                                    .getPublicRole();
         PermissionOverride permissionOverride = textChannel.getPermissionOverride(everyone);
         if (permissionOverride == null || !permissionOverride.getDenied()
-                                                             .contains(Permission.MESSAGE_WRITE)) {
+                                                             .contains(Permission.MESSAGE_SEND)) {
             canWrite(textChannel, everyone, false);
         }
         if (ok && !ended) {
@@ -323,21 +322,25 @@ public class ESportLineBot extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildMessageReceived(@NotNull GuildMessageReceivedEvent event) {
-        receive(event.getMessage());
-        super.onGuildMessageReceived(event);
+    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (event.isFromGuild()) {
+            receive(event.getMessage());
+        }
+        super.onMessageReceived(event);
     }
 
     @Override
-    public void onGuildMessageDelete(@NotNull GuildMessageDeleteEvent event) {
-        if (Arrays.stream(ignoreMessage)
-                  .anyMatch(id -> id == event.getMessageIdLong())) {
+    public void onMessageDelete(@NotNull MessageDeleteEvent event) {
+        if (!event.isFromGuild() || Arrays.stream(ignoreMessage)
+                                          .anyMatch(id -> id == event.getMessageIdLong())) {
             return;
         }
         MessageHistory history = event.getChannel()
                                       .getHistoryFromBeginning(99)
                                       .complete();
-        for (PermissionOverride override : event.getChannel()
+        // FIXME: 01/12/2021 Exception when deleting message
+        for (PermissionOverride override : event.getGuildChannel()
+                                                .getPermissionContainer()
                                                 .getPermissionOverrides()) {
             if (override.isMemberOverride() && override.getMember() != null && history.getRetrievedHistory()
                                                                                       .stream()
@@ -350,10 +353,10 @@ public class ESportLineBot extends ListenerAdapter {
                     !override.getMember()
                              .getUser()
                              .isBot()) {
-                canWrite(event.getChannel(), override.getMember(), true);
+                canWrite((TextChannel) event.getGuildChannel(), override.getMember(), true);
             }
         }
-        super.onGuildMessageDelete(event);
+        super.onMessageDelete(event);
     }
 
     @Override
@@ -388,7 +391,6 @@ public class ESportLineBot extends ListenerAdapter {
         super.onMessageReactionAdd(event);
     }
 
-
     @Override
     public void onGuildVoiceJoin(@NotNull GuildVoiceJoinEvent event) {
         if (event.getChannelJoined()
@@ -400,219 +402,188 @@ public class ESportLineBot extends ListenerAdapter {
         TextChannel threadsChannel = event.getJDA()
                                           .getTextChannelById(this.threadsChannel);
         Category category;
-        if (threadsChannel == null || (category = threadsChannel.getParent()) == null) {
+        if (threadsChannel == null || (category = threadsChannel.getParentCategory()) == null) {
             return;
         }
         String name = channelNameTemplate.formatted(event.getMember()
                                                          .getEffectiveName());
-        ThreadChannel threadChannel = ThreadChannel.create(threadsChannel, name)
-                                                   .complete();
-        threadChannel.join(event.getMember())
-                     .complete();
         VoiceChannel voiceChannel = category.createVoiceChannel(name)
                                             .complete();
         event.getGuild()
              .moveVoiceMember(event.getMember(), voiceChannel)
              .complete();
 
+        ThreadChannel thread = threadsChannel.createThreadChannel(name)
+                                             .complete();
+        thread.sendMessage("Bounded to " + voiceChannel.getAsMention())
+              .flatMap(Message::pin)
+              .complete();
+        thread.addThreadMember(event.getMember())
+              .complete();
+
         super.onGuildVoiceJoin(event);
     }
 
+    // TODO: 01/12/2021 Add restore state when disconnected
+    // TODO: 01/12/2021 Split in different class
+    // TODO: 01/12/2021 Command /voice
+
+    List<Long> ignore = new ArrayList<>();
     @Override
     public void onRawGateway(@NotNull RawGatewayEvent event) {
         System.out.println("event.getPackage() = " + event.getPackage());
+        if (!event.getType()
+                  .equals("THREAD_UPDATE")) {
+            return;
+        }
+        DataObject metadata = event.getPayload()
+                                   .getObject("thread_metadata");
+        boolean archived = metadata.getBoolean("archived");
+
+        ThreadChannel threadChannel = event.getJDA()
+                                           .getThreadChannelById(event.getPayload().getString("id"));
+        if (threadChannel == null) {
+            return;
+        }
+
+        TextChannel parentChannel = threadChannel.getGuild()
+                                                 .getTextChannelById(threadChannel.getParentChannel()
+                                                                                  .getIdLong());
+        if (parentChannel == null) {
+            return;
+        }
+
+        List<Message> messages = threadChannel.getHistoryFromBeginning(10)
+                                              .map(MessageHistory::getRetrievedHistory)
+                                              .complete();
+        Optional<Message> optionalMessage = messages.stream()
+                                                    .filter(Message::isPinned)
+                                                    .filter(msg -> msg.getAuthor()
+                                                                      .isBot())
+                                                    .findFirst();
+        if (optionalMessage.isEmpty()) {
+            return;
+        }
+        Message message = optionalMessage.get();
+
+        Matcher matcher;
+        if (!(matcher = Pattern.compile("<#(?<id>[0-9]*)>")
+                               .matcher(message.getContentRaw())).find()) {
+            if (!archived) {
+                Category category;
+                if ((category = parentChannel
+                                             .getParentCategory()) == null) {
+                    return;
+                }
+                category.createVoiceChannel(threadChannel.getName())
+                        .complete();
+            }
+            return;
+        }
+        long id = Long.parseLong(matcher.group("id"));
+
+        VoiceChannel voice = threadChannel.getGuild()
+                                  .getVoiceChannelById(id);
+        if (voice == null && !archived) {
+            Category category;
+            if ((category = parentChannel
+                                 .getParentCategory()) == null) {
+                return;
+            }
+            category.createVoiceChannel(threadChannel
+                                             .getName())
+                    .flatMap(vc -> message.editMessage("Bounded to " + vc.getAsMention()))
+                    .complete();
+            ignore.add(threadChannel.getIdLong());
+        }
+        if (voice == null) {
+            return;
+        }
+        if (ignore.contains(threadChannel.getIdLong())) {
+            ignore.remove(threadChannel.getIdLong());
+            return;
+        }
+        if (!voice.getMembers()
+                  .isEmpty()) {
+            threadChannel
+                 .getManager()
+                 .setArchived(false)
+                 .complete();
+            return;
+        }
+        voice.delete()
+             .complete();
         super.onRawGateway(event);
     }
-
-    // CLASS
-
-    static class ThreadChannel {
-
-        private final JDA jda;
-
-        private final long    parentId;
-        private final long    ownerId;
-        private final int     rateLimitPerUser;
-        private final long    guildId;
-        private final String  name;
-        private final long    id;
-        private       boolean archived;
-        //        private       Date    archiveIn;
-        private       boolean locked;
-        private       int     autoArchiveDuration;
-        private       int     memberCount;
-        private       long    lastMessageId;
-        private       int     messageCount;
-
-        public static final Route LIST_ACTIVE_THREADS           = Route.get("channels/{channel_id}/threads/active");
-        public static final Route LIST_PUBLIC_ARCHIVED_THREADS  = Route.get(
-                "channels/{channel_id}/threads/archived/public");
-        public static final Route LIST_PRIVATE_ARCHIVED_THREADS = Route.get(
-                "channels/{channel_id}/threads/archived/private");
-        public static final Route LIST_JOINED_PRIVATE_THREADS   = Route.get(
-                "channels/{channel_id}/users/@me/threads/archived/private");
-
-        public static final Route NEW_THREAD              = Route.post("channels/{channel_id}/threads");
-        public static final Route NEW_THREAD_WITH_MESSAGE = Route.post(
-                "channels/{channel_id}/messages/{message_id}/threads");
-
-        public static final Route JOIN_THREAD          = Route.put("channels/{channel_id}/thread-members/@me");
-        public static final Route ADD_THREAD_MEMBER    = Route.put("channels/{channel_id}/thread-members/{user_id}");
-        public static final Route LEAVE_THREAD         = Route.delete("channels/{channel_id}/thread-members/@me");
-        public static final Route REMOVE_THREAD_MEMBER = Route.delete("channels/{channel_id}/thread-members/{user_id}");
-        public static final Route GET_THREAD_MEMBER    = Route.get("channels/{channel_id}/thread-members/{user_id}");
-        public static final Route LIST_THREAD_MEMBERS  = Route.get("channels/{channel_id}/thread-members");
-
-        public static RestAction<List<ThreadChannel>> listActiveThreads(TextChannel channel) {
-            Route.CompiledRoute route = LIST_ACTIVE_THREADS.compile(channel.getId());
-            return new RestActionImpl<>(channel.getJDA(),
-                                        route,
-                                        (response, request) -> response.getArray()
-                                                                       .stream(DataArray::getObject)
-                                                                       .map(json -> new ThreadChannel(channel.getJDA(),
-                                                                                                      json
-                                                                       ))
-                                                                       .toList()
-            );
+/*
+    @Override
+    public void onThreadUpdateArchive(@NotNull ThreadUpdateArchiveEvent event) {
+        List<Message> messages = event.getEntity()
+                                      .getHistoryFromBeginning(10)
+                                      .map(MessageHistory::getRetrievedHistory)
+                                      .complete();
+        Optional<Message> optionalMessage = messages.stream()
+                                                    .filter(Message::isPinned)
+                                                    .filter(msg -> msg.getAuthor()
+                                                                      .isBot())
+                                                    .findFirst();
+        if (optionalMessage.isEmpty()) {
+            return;
         }
+        Message message = optionalMessage.get();
 
-        public static RestAction<ThreadChannel> create(TextChannel channel, String name) {
-            Route.CompiledRoute route = NEW_THREAD.compile(channel.getId());
-            DataObject          json  = DataObject.empty();
-            json.put("name", name);
-            json.put("type", 11);
-            return new RestActionImpl<>(channel.getJDA(),
-                                        route,
-                                        json,
-                                        (response, request) -> new ThreadChannel(channel.getJDA(), response.getObject())
-            );
-        }
-
-        public static RestAction<ThreadChannel> create(Message message, String name) {
-            Route.CompiledRoute route = NEW_THREAD_WITH_MESSAGE.compile(message.getChannel()
-                                                                               .getId(), message.getId());
-            DataObject json = DataObject.empty();
-            json.put("name", name);
-            json.put("type", 11);
-            return new RestActionImpl<>(message.getJDA(),
-                                        route,
-                                        json,
-                                        (response, request) -> new ThreadChannel(message.getJDA(), response.getObject())
-            );
-        }
-
-        ThreadChannel(JDA jda, DataObject json) {
-            this.jda = jda;
-            DataObject metadata = json.getObject("thread_metadata");
-
-            this.parentId = json.getLong("parent_id");
-            this.ownerId = json.getLong("owner_id");
-            this.rateLimitPerUser = json.getInt("rate_limit_per_user");
-            this.guildId = json.getLong("guild_id");
-            this.name = json.getString("name");
-            this.id = json.getLong("id");
-            this.archived = metadata.getBoolean("archived");
-//            this.archiveIn = new Date(DateTimeFormatter.BASIC_ISO_DATE.parse(json.getString("archive_timestamp")));
-            this.locked = metadata.getBoolean("locked");
-            this.autoArchiveDuration = metadata.getInt("auto_archive_duration");
-            this.memberCount = json.getInt("member_count");
-            this.messageCount = json.getInt("message_count");
-            this.lastMessageId = json.getLong("last_message_id", -1L);
-        }
-
-        public RestAction<Void> join() {
-            return join(getGuild().getSelfMember());
-        }
-
-        public RestAction<Void> join(Member member) {
-            Route.CompiledRoute route;
-            if (member.getIdLong() == getGuild().getSelfMember()
-                                                .getIdLong()) {
-                route = JOIN_THREAD.compile(getId());
-            } else {
-                route = ADD_THREAD_MEMBER.compile(getId(), member.getId());
+        Matcher matcher;
+        if (!(matcher = Pattern.compile("<#(?<id>[0-9]*)>")
+                               .matcher(message.getContentRaw())).find()) {
+            if (!event.getNewArchiveState()) {
+                Category category;
+                if ((category = event.getChannel()
+                                     .getParent()) == null) {
+                    return;
+                }
+                category.createVoiceChannel(event.getEntity()
+                                                 .getName())
+                        .complete();
             }
-
-            return new RestActionImpl<>(jda, route);
+            return;
         }
+        long id = Long.parseLong(matcher.group("id"));
 
-        public RestAction<Void> leave() {
-            return leave(getGuild().getSelfMember());
-        }
-
-        public RestAction<Void> leave(Member member) {
-            Route.CompiledRoute route;
-            if (member.getIdLong() == getGuild().getSelfMember()
-                                                .getIdLong()) {
-                route = LEAVE_THREAD.compile(getId());
-            } else {
-                route = REMOVE_THREAD_MEMBER.compile(getId(), member.getId());
+        VoiceChannel voice = event.getGuild()
+                                  .getVoiceChannelById(id);
+        if (voice == null && !event.getNewArchiveState()) {
+            Category category;
+            if ((category = event.getChannel()
+                                 .getParent()) == null) {
+                return;
             }
-
-            return new RestActionImpl<>(jda, route);
+            category.createVoiceChannel(event.getEntity()
+                                             .getName())
+                    .flatMap(vc -> message.editMessage("Bounded to " + vc.getAsMention()))
+                    .complete();
         }
-
-        // GETTERS
-
-        public long getParentId() {
-            return parentId;
+        if (voice == null) {
+            return;
         }
-
-        public long getOwnerId() {
-            return ownerId;
+        if (!voice.getMembers()
+                  .isEmpty()) {
+            event.getThread()
+                 .getManager()
+                 .setArchived(false)
+                 .complete();
+            return;
         }
-
-        public int getRateLimitPerUser() {
-            return rateLimitPerUser;
-        }
-
-        public Guild getGuild() {
-            return jda.getGuildById(guildId);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getId() {
-            return getIdLong() + "";
-        }
-
-        public long getIdLong() {
-            return id;
-        }
-
-        public boolean isArchived() {
-            return archived;
-        }
-
-        public boolean isLocked() {
-            return locked;
-        }
-
-        public int getAutoArchiveDuration() {
-            return autoArchiveDuration;
-        }
-
-        public int getMemberCount() {
-            return memberCount;
-        }
-
-        public long getLastMessageId() {
-            return lastMessageId;
-        }
-
-        public int getMessageCount() {
-            return messageCount;
-        }
+        voice.delete()
+             .complete();
+        super.onThreadUpdateArchive(event);
     }
-
+*/
     // UTILS
 
     public void canWrite(TextChannel channel, IPermissionHolder holder, boolean can) {
         if (!can) {
             channel.getManager()
-                   .putPermissionOverride(holder, 0, Permission.MESSAGE_WRITE.getRawValue())
+                   .putPermissionOverride(holder, 0, Permission.MESSAGE_SEND.getRawValue())
                    .complete();
         } else {
             channel.getManager()
