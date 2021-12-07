@@ -25,6 +25,7 @@ dependencies {
         exclude module: 'opus-java'
     }
     implementation('fr.enimaloc.enutils:classes:0.0.3')
+    implementation('fr.enimaloc.enutils:tuples:0.0.3')
     implementation 'pw.chew:jda-chewtils:1.custom'
 }
 

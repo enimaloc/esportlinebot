@@ -2,6 +2,7 @@ package fr.enimaloc.esportlinebot.commands;
 
 import com.jagrosh.jdautilities.command.SlashCommand;
 import fr.enimaloc.esportlinebot.ESportLineBot;
+import fr.enimaloc.esportlinebot.utils.PollUtils;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 
@@ -20,12 +21,12 @@ public class ForceDrawCommand extends SlashCommand {
 
     @Override
     protected void execute(SlashCommandEvent event) {
-        TextChannel textChannel = event.getJDA().getTextChannelById(eSportLineBot.voteChannel);
+        TextChannel textChannel = event.getJDA().getTextChannelById(eSportLineBot.VOTE_CHANNEL);
         if (textChannel == null) {
             return;
         }
-        eSportLineBot.ended = false;
-        eSportLineBot.draw(textChannel, true);
+        PollUtils.ended = false;
+        PollUtils.draw(textChannel, true);
 
         event.reply("Done").setEphemeral(true).queue();
     }
