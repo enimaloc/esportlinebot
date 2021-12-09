@@ -2,13 +2,12 @@ package fr.enimaloc.esportlinebot;
 
 import com.jagrosh.jdautilities.command.CommandClient;
 import com.jagrosh.jdautilities.command.CommandClientBuilder;
-import com.jagrosh.jdautilities.command.CommandListener;
-import com.jagrosh.jdautilities.command.SlashCommand;
 
 import fr.enimaloc.enutils.classes.NumberUtils;
 import fr.enimaloc.esportlinebot.exception.MissingEnvironmentVariableError;
 import fr.enimaloc.esportlinebot.listener.PollListener;
 import fr.enimaloc.esportlinebot.listener.TempAudioChannelListener;
+import fr.enimaloc.esportlinebot.listener.command.CommandListener;
 import fr.enimaloc.esportlinebot.utils.PollUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -20,8 +19,6 @@ import fr.enimaloc.esportlinebot.commands.ClearCommand;
 import fr.enimaloc.esportlinebot.commands.ForceDrawCommand;
 import fr.enimaloc.esportlinebot.commands.StatusCommand;
 import net.dv8tion.jda.api.*;
-import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
@@ -102,48 +99,7 @@ public class ESportLineBot extends ListenerAdapter {
                                                                   new StatusCommand(),
                                                                   new ClearCommand()
                                                 )
-                                                .setListener(new CommandListener() {
-                                                    @Override
-                                                    public void onSlashCommand(
-                                                            SlashCommandEvent event, SlashCommand command
-                                                    ) {
-                                                        if (event.getMember() != null) {
-                                                            if (Arrays.stream(command.getDisabledRoles())
-                                                                      .map(Long::parseLong)
-                                                                      .anyMatch(id -> event.getMember()
-                                                                                           .getRoles()
-                                                                                           .stream()
-                                                                                           .map(Role::getIdLong)
-                                                                                           .toList()
-                                                                                           .contains(id)) ||
-                                                                Arrays.stream(command.getDisabledUsers())
-                                                                      .map(Long::parseLong)
-                                                                      .toList()
-                                                                      .contains(event.getUser()
-                                                                                     .getIdLong())) {
-                                                                return;
-                                                            }
-                                                            if ((command.getEnabledRoles().length != 0 &&
-                                                                 Arrays.stream(command.getEnabledRoles())
-                                                                       .map(Long::parseLong)
-                                                                       .noneMatch(id -> event.getMember()
-                                                                                             .getRoles()
-                                                                                             .stream()
-                                                                                             .map(Role::getIdLong)
-                                                                                             .toList()
-                                                                                             .contains(id))) &&
-                                                                (command.getEnabledUsers().length != 0) &&
-                                                                !Arrays.stream(command.getEnabledUsers())
-                                                                       .map(Long::parseLong)
-                                                                       .toList()
-                                                                       .contains(event.getUser()
-                                                                                      .getIdLong())) {
-                                                                return;
-                                                            }
-                                                        }
-                                                        CommandListener.super.onSlashCommand(event, command);
-                                                    }
-                                                })
+                                                .setListener(new CommandListener())
                                                 .setStatus(OnlineStatus.ONLINE)
                                                 .build();
 

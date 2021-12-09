@@ -17,32 +17,22 @@ import org.jetbrains.annotations.NotNull;
 public class TempAudioChannelListener extends ListenerAdapter {
     @Override
     public void onGuildVoiceJoin(@NotNull GuildVoiceJoinEvent event) {
+        Optional<ThreadChannel> linkedThread = getLinkedThread(event.getChannelJoined());
+        if (linkedThread.isPresent()) {
+            linkedThread.get().addThreadMember(event.getMember()).complete();
+            return;
+        }
+
         if (event.getChannelJoined()
                  .getIdLong() != ESportLineBot.VOICE_CHANNEL || event.getMember()
                                                                      .getUser()
                                                                      .isBot() || !canCreate(event.getMember())) {
-            System.out.println(
-                    "Objects.requireNonNull(event.getJDA()\n                                         .getTextChannelById(ESportLineBot.THREADS_CHANNEL))\n                   .getThreadChannels()\n                   .stream()\n                   .map(this::getFirstMessage)\n                   .filter(Optional::isPresent)\n                   .map(Optional::get)\n                   .map(this::parseThreadSystemMessage)\n                   .map(Tuple3::getOptionalC)\n                   .filter(Optional::isPresent)\n                   .map(Optional::get)\n                   .map(User::getIdLong)\n                   .filter(l -> l == event.getMember().getIdLong())\n                   .count() = " +
-                    Objects.requireNonNull(event.getJDA()
-                                                .getTextChannelById(ESportLineBot.THREADS_CHANNEL))
-                           .getThreadChannels()
-                           .stream()
-                           .map(this::getFirstMessage)
-                           .filter(Optional::isPresent)
-                           .map(Optional::get)
-                           .map(this::parseThreadSystemMessage)
-                           .map(Tuple3::getOptionalC)
-                           .filter(Optional::isPresent)
-                           .map(Optional::get)
-                           .map(User::getIdLong)
-                           .filter(l -> l == event.getMember().getIdLong())
-                           .count());
             return;
         }
         TextChannel threadsChannel = event.getJDA()
                                           .getTextChannelById(ESportLineBot.THREADS_CHANNEL);
         Category category;
-        if (threadsChannel == null || (category = threadsChannel.getParentCategory()) == null) {
+        if (threadsChannel == null || (category = threadsChannel.getParentCategory()) == null || !overflow(event.getJDA())) {
             return;
         }
         String name = ESportLineBot.CHANNEL_NAME_TEMPLATE.formatted(event.getMember()
@@ -116,36 +106,23 @@ public class TempAudioChannelListener extends ListenerAdapter {
         Message                            message = messageOpt.get();
         Tuple3<AudioChannel, String, User> tuple   = parseThreadSystemMessage(message);
 
-/*        if (tuple.getOptionalA().isEmpty()) {
-            if (!archived) {
-                Category category;
-                if ((category = parentChannel
-                        .getParentCategory()) == null) {
-                    return;
-                }
-                category.createVoiceChannel(threadChannel.getName())
-                        .complete();
-            }
-            return;
-        }
-*/
         AudioChannel voice = tuple.getOptionalA().orElse(null);
         if (!archived && tuple.getOptionalA().isEmpty()) {
             Category category;
             if ((category = parentChannel.getParentCategory()) == null) {
                 return;
             }
-            category.createVoiceChannel(threadChannel
-                                                .getName())
-                    .flatMap(vc -> Objects.requireNonNull(message)
-                                          .editMessage(vc.getIdLong() + "\u0001" + tuple.b() + "\u0001" +
-                                                       tuple.getOptionalC()
-                                                            .map(User::getIdLong)
-                                                            .orElse(0L)))
-                    .complete();
-            ignore.add(threadChannel.getIdLong());
-        } else {
-            return;
+
+            if (overflow(event.getJDA())) {
+                category.createVoiceChannel(tuple.getOptionalB()
+                                                 .orElse(threadChannel.getName()))
+                        .flatMap(vc -> Objects.requireNonNull(message)
+                                              .editMessage(vc.getIdLong() + "\u0001" + tuple.b() + "\u0001" + tuple.getOptionalC()
+                                                                                                                   .map(User::getIdLong)
+                                                                                                                   .orElse(0L)))
+                        .complete();
+                ignore.add(threadChannel.getIdLong());
+            }
         }
         if (ignore.contains(threadChannel.getIdLong())) {
             ignore.remove(threadChannel.getIdLong());
@@ -195,8 +172,20 @@ public class TempAudioChannelListener extends ListenerAdapter {
                 return true;
             }
         }
-
         return false;
+    }
+
+    public Optional<ThreadChannel> getLinkedThread(AudioChannel channel) {
+        for (ThreadChannel threadChannel : Objects.requireNonNull(channel.getJDA()
+                                                                         .getTextChannelById(ESportLineBot.THREADS_CHANNEL))
+                                                  .getThreadChannels()) {
+            if (getLinkedChannel(threadChannel).map(AudioChannel::getIdLong)
+                                               .filter(id -> id == channel.getIdLong())
+                                               .isPresent()) {
+                return Optional.ofNullable(threadChannel);
+            }
+        }
+        return Optional.empty();
     }
 
     public Optional<AudioChannel> getLinkedChannel(ThreadChannel threadChannel) {
