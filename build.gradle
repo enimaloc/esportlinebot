@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+}
+
+group 'fr.enimaloc'
+version '1.0'
+
+compileJava.options.encoding = "UTF-8"
+compileJava.options.compilerArgs += '-parameters'
+
+repositories {
+    mavenCentral() // for transitive dependencies
+    maven { url 'https://jitpack.io' }
+    maven {
+        name 'm2-dv8tion'
+        url 'https://m2.dv8tion.net/releases'
+    }
+    maven {url 'https://m2.enimaloc.fr/releases'}
+    maven {
+        url 'https://m2.enimaloc.fr/alphas'
+        credentials {
+            username = System.getenv('m2.username')
+            password = System.getenv('m2.password')
+        }
+        authentication {
+            //noinspection GroovyAssignabilityCheck
+            basic(BasicAuthentication)
+        }
+    }
+    mavenLocal()
+}
+
+dependencies {
+    // Base dependencies
+    implementation('net.dv8tion:JDA:5.0.0-beta.2')
+    implementation('fr.enimaloc.enutils:classes:0.5.0')
+    implementation('fr.enimaloc.enutils:tuples:0.0.3')
+    implementation('fr.enimaloc:jda-enutils:0.0.30-ALPHA.local')
+    implementation('org.slf4j:slf4j-simple:2.0.5')
+    implementation('commons-io:commons-io:2.11.0')
+    implementation('com.electronwill.night-config:toml:3.6.6')
+    implementation('org.xerial:sqlite-jdbc:3.40.0.0')
+}
+
+jar {
+    actions = []
+    dependsOn = []
+    dependsOn('shadowJar')
+}
