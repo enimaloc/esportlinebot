@@ -40,13 +40,15 @@ import java.util.Optional;
         description = "Adjust settings for the bot",
         permission = @fr.enimaloc.enutils.jda.annotation.Permission(permissions = {Permission.MANAGE_SERVER}))
 public class Settings {
-    public        FileConfig config;
+    public FileConfig config;
 
     @SlashCommand.GroupProvider
     public TempChannel tempChannel = new TempChannel();
+    @SlashCommand.GroupProvider
+    public Music       music       = new Music();
 
 
-    private final BackSettings[] settings     = new BackSettings[]{tempChannel};
+    private final BackSettings[] settings     = new BackSettings[]{tempChannel, music};
     private       String         token        = ObjectUtils.getOr(System.getenv("DISCORD_TOKEN"), "");
     private       String         databasePath = "data.db";
     private       long           guildId      = 0L;
@@ -260,6 +262,44 @@ public class Settings {
             return JagTag.newDefaultBuilder().addMethods(DiscordLibrairies.allMethods()).build();
         }
 
+    }
+
+    public class Music implements BackSettings {
+
+        public boolean enabled = false;
+
+        @Override
+        public void load(Config config) {
+            enabled = config.getOrElse("music.enabled", enabled);
+        }
+
+        @Override
+        public void save(Config config) {
+            config.set("music.enabled", enabled);
+        }
+
+        @Override
+        public ConfigSpec completeSpec(ConfigSpec spec) {
+            spec.define("music.enabled", enabled);
+            return spec;
+        }
+
+        @Override
+        public boolean enabled() {
+            return enabled;
+        }
+
+        @SlashCommand.Sub(name = "enable", description = "Enable the music system")
+        public void enable(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> enable
+        ) {
+            enable.ifPresent(b -> {
+                enabled = b;
+                Settings.this.save();
+            });
+            event.replyEphemeral("Music system is " + (enabled() ? "enabled" : "disabled")).queue();
+        }
     }
 
     @SlashCommand.Sub(name = "modules", description = "See module state")
