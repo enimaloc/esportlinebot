@@ -11,6 +11,7 @@ import fr.enimaloc.enutils.classes.ObjectUtils;
 import fr.enimaloc.enutils.jda.JDAEnutils;
 import fr.enimaloc.enutils.jda.annotation.Init;
 import fr.enimaloc.enutils.jda.annotation.Interaction;
+import fr.enimaloc.esportlinebot.module.tempChannel.TempChannel;
 import fr.enimaloc.esportlinebot.settings.Settings;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -77,6 +78,7 @@ public class ESportLineBot extends ListenerAdapter {
         this.jdaEnutils = JDAEnutils.builder()
                 .setJda(jda)
                 .addCommand(settings)
+                .addToAll(new TempChannel(settings.tempChannel, sql))
                 .build();
         jdaEnutils.upsertAll();
     }
