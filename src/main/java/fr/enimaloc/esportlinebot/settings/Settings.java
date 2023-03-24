@@ -7,28 +7,30 @@
  */
 package fr.enimaloc.esportlinebot.settings;
 
-import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.ConfigSpec;
 import com.electronwill.nightconfig.core.file.FileConfig;
 import fr.enimaloc.enutils.classes.ObjectUtils;
 import fr.enimaloc.enutils.jda.annotation.MethodTarget;
 import fr.enimaloc.enutils.jda.annotation.SlashCommand;
+import fr.enimaloc.enutils.jda.annotation.SlashCommand.GroupProvider;
+import fr.enimaloc.enutils.jda.annotation.SlashCommand.Option;
+import fr.enimaloc.enutils.jda.annotation.SlashCommand.Sub;
 import fr.enimaloc.enutils.jda.entities.GuildSlashCommandEvent;
 import fr.enimaloc.esportlinebot.jagtag.DiscordLibrairies;
 import me.jagrosh.jagtag.JagTag;
 import me.jagrosh.jagtag.Method;
 import me.jagrosh.jagtag.Parser;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.ForumChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.Command;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,196 +41,174 @@ import java.util.Optional;
 @SlashCommand(name = "settings",
         description = "Adjust settings for the bot",
         permission = @fr.enimaloc.enutils.jda.annotation.Permission(permissions = {Permission.MANAGE_SERVER}))
-public class Settings {
-    public FileConfig config;
+public class Settings extends ESettings {
+    public static       boolean DEBUG  = System.getenv("DEV") != null;
+    public static final Logger  LOGGER = LoggerFactory.getLogger(Settings.class);
 
-    @SlashCommand.GroupProvider
-    public TempChannel tempChannel = new TempChannel();
-    @SlashCommand.GroupProvider
-    public Music       music       = new Music();
+    @SettingsEntry
+    public String databasePath = "database.db";
+    @SettingsEntry
+    public String token        = ObjectUtils.getOr(System.getenv("DISCORD_TOKEN"), "");
+    @SettingsEntry
+    public long   guildId      = 0;
 
+    @GroupProvider
+    @SettingsEntry
+    public Ticket      ticket      = new Ticket(this);
+    @GroupProvider
+    @SettingsEntry
+    public TempChannel tempChannel = new TempChannel(this);
+    @GroupProvider
+    @SettingsEntry
+    public Music       music       = new Music(this);
 
-    private final BackSettings[] settings     = new BackSettings[]{tempChannel, music};
-    private       String         token        = ObjectUtils.getOr(System.getenv("DISCORD_TOKEN"), "");
-    private       String         databasePath = "data.db";
-    private       long           guildId      = 0L;
+    public Settings(Path configPath) {
+        super(FileConfig.builder(configPath).autosave().concurrent().build());
+    }
 
-    public void load(Path configPath) {
-        config = FileConfig.builder(configPath).autosave().build();
+    public void load() {
         config.load();
 
         ConfigSpec spec = new ConfigSpec();
-        spec.define("token", token);
-        spec.define("databasePath", databasePath);
-        spec.define("guildId", guildId);
-        for (BackSettings bSettings : settings) {
-            spec = bSettings.completeSpec(spec);
-        }
-        int correct = spec.correct(config);
+        spec = spec(spec);
+        int correct = spec.correct(config, (action, path, incorrectValue, correctedValue) -> LOGGER.warn("Corrected {} from {} to {}", path, incorrectValue, correctedValue));
 
-        token = config.getOrElse("token", token);
-        databasePath = config.getOrElse("databasePath", databasePath);
-        guildId = config.getOrElse("guildId", guildId);
-        Arrays.stream(settings).forEach(bSettings -> bSettings.load(config));
-
+        load(config);
         if (correct > 0) {
-            save();
+            save(config);
         }
     }
 
-    public void save() {
-        config.set("token", token);
-        config.set("databasePath", databasePath);
-        config.set("guildId", guildId);
-        Arrays.stream(settings).forEach(bSettings -> bSettings.save(config));
-        config.save();
+    @Sub(name = "database", description = "Change the database path")
+    public void database(GuildSlashCommandEvent event,
+                         @Option(name = "path", description = "The new database path") Optional<String> path) {
+        path.ifPresent(s -> {
+            this.databasePath = s;
+            save(config);
+        });
+        event.replyEphemeral("Database path: " + this.databasePath).queue();
     }
 
-    public String token() {
-        return token;
-    }
+    public static class Ticket extends ESettings {
+        @SettingsEntry
+        public long    forumId = 0L;
+        @SettingsEntry
+        public boolean enabled = true;
 
-    public String databasePath() {
-        return databasePath;
-    }
-
-    public long guildId() {
-        return guildId;
-    }
-
-    public interface BackSettings {
-        void load(Config config);
-
-        void save(Config config);
-
-        ConfigSpec completeSpec(ConfigSpec spec);
-
-        boolean enabled();
-    }
-
-    public class TempChannel implements BackSettings {
-
-        public boolean enabled        = false;
-        public long    triggerChannel = 0L;
-        public long    categoryId     = 0L;
-        public int     position       = -1;
-
-        public String template = "{user:channelName} channel";
-
-        @Override
-        public void load(Config config) {
-            enabled = config.getOrElse("tempChannel.enabled", enabled);
-            triggerChannel = config.getOrElse("tempChannel.triggerChannel", triggerChannel);
-            categoryId = config.getOrElse("tempChannel.categoryId", categoryId);
-            position = config.getOrElse("tempChannel.position", position);
-            template = config.getOrElse("tempChannel.template", template);
+        protected Ticket(ESettings parent) {
+            super("ticket", parent);
         }
 
-        @Override
-        public void save(Config config) {
-            config.set("tempChannel.enabled", enabled);
-            config.set("tempChannel.triggerChannel", triggerChannel);
-            config.set("tempChannel.categoryId", categoryId);
-            config.set("tempChannel.position", position);
-            config.set("tempChannel.template", template);
-        }
-
-        @Override
-        public ConfigSpec completeSpec(ConfigSpec spec) {
-            spec.define("tempChannel.enabled", enabled);
-            spec.define("tempChannel.triggerChannel", triggerChannel);
-            spec.define("tempChannel.categoryId", categoryId);
-            spec.define("tempChannel.position", position);
-            spec.define("tempChannel.template", template);
-            return spec;
-        }
-
-        @Override
-        public boolean enabled() {
-            return enabled;
-        }
-
-        public long triggerChannel() {
-            return triggerChannel;
-        }
-
-        public long categoryId() {
-            return categoryId;
-        }
-
-        public int position() {
-            return position;
-        }
-
-        public String template() {
-            return template;
-        }
-
-        @SlashCommand.Sub(name = "enable", description = "Enable the temp channel system")
+        @Sub(name = "enable", description = "Enable the ticket system")
         public void enable(
                 GuildSlashCommandEvent event,
                 @SlashCommand.Option Optional<Boolean> enable
         ) {
             enable.ifPresent(b -> {
-                VoiceChannel channel = event.getJDA().getVoiceChannelById(triggerChannel());
-                if (b && channel == null) {
-                    throw new IllegalStateException("Trigger channel not found, disabling temp channel");
-                }
                 enabled = b;
-                Settings.this.save();
+                save();
             });
-            event.replyEphemeral("Temp channel system is " + (enabled() ? "enabled" : "disabled")).queue();
+            event.replyEphemeral("Le systéme de ticket est " + (enabled ? "activé" : "désactivé"))
+                    .queue();
         }
 
-        @SlashCommand.Sub(name = "trigger", description = "Set the trigger channel")
+        @Sub(name = "forum", description = "Set the forum")
+        public void forum(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<ForumChannel> forum
+        ) {
+            forum.ifPresent(f -> {
+                this.forumId = f.getIdLong();
+                save();
+            });
+            event.replyEphemeral("Le forum est <#" + forumId + ">")
+                    .queue();
+        }
+    }
+
+    public static class TempChannel extends ESettings {
+        @SettingsEntry
+        public boolean enabled        = true;
+        @SettingsEntry
+        public long    triggerChannel = 0L;
+        @SettingsEntry
+        public long    categoryId     = 0L;
+        @SettingsEntry
+        public int     position       = -1;
+        @SettingsEntry
+        public String  template       = "{user:name} channel";
+
+        protected TempChannel(ESettings parent) {
+            super("tempchannel", parent);
+        }
+
+        @Sub(name = "enable", description = "Enable the temp channel system")
+        public void enable(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> enable
+        ) {
+            enable.ifPresent(b -> {
+                enabled = b;
+                save();
+            });
+            event.replyEphemeral("Le systéme de channel temporaire est " + (enabled ? "activé" : "désactivé"))
+                    .queue();
+        }
+
+        @Sub(name = "trigger", description = "Set the trigger channel")
         public void trigger(
                 GuildSlashCommandEvent event,
-                @SlashCommand.Option Optional<VoiceChannel> channel
+                @SlashCommand.Option Optional<VoiceChannel> trigger
         ) {
-            channel.ifPresent(c -> {
-                triggerChannel = c.getIdLong();
-                Settings.this.save();
+            trigger.ifPresent(f -> {
+                this.triggerChannel = f.getIdLong();
+                save();
             });
-            event.replyEphemeral("Trigger channel is " + (triggerChannel != 0L ? "<#" + triggerChannel + ">" : "not set")).queue();
+            event.replyEphemeral("Le channel de trigger est <#" + triggerChannel + ">")
+                    .queue();
         }
 
-        @SlashCommand.Sub(name = "category", description = "Set the category id")
+        @Sub(name = "category", description = "Set the category")
         public void category(
                 GuildSlashCommandEvent event,
                 @SlashCommand.Option Optional<Category> category
         ) {
-            category.ifPresent(c -> {
-                categoryId = c.getIdLong();
-                Settings.this.save();
+            category.ifPresent(f -> {
+                this.categoryId = f.getIdLong();
+                save();
             });
-            event.replyEphemeral("Category is " + (categoryId != 0L ? "<#" + categoryId + ">" : "not set")).queue();
+            event.replyEphemeral("La catégorie est <#" + categoryId + ">")
+                    .queue();
         }
 
-        @SlashCommand.Sub(name = "position", description = "Set the position")
+        @Sub(name = "position", description = "Set the position")
         public void position(
                 GuildSlashCommandEvent event,
                 @SlashCommand.Option Optional<Integer> position
         ) {
-            position.ifPresent(p -> {
-                this.position = p;
-                Settings.this.save();
+            position.ifPresent(f -> {
+                this.position = f;
+                save();
             });
-            event.replyEphemeral("Position is " + (this.position != -1 ? position : "not set")).queue();
+            event.replyEphemeral("La position est " + this.position)
+                    .queue();
         }
 
-        @SlashCommand.Sub(name = "template", description = "Set the template")
+        @Sub(name = "template", description = "Set the template")
         public void template(
                 GuildSlashCommandEvent event,
                 @SlashCommand.Option(
-                        autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("templateExample"))
+                        autoCompletion = @Option.AutoCompletion(target = @MethodTarget("templateExample"))
                 ) Optional<String> template
         ) {
-            template.ifPresent(t -> {
-                this.template = t;
-                Settings.this.save();
+            template.ifPresent(f -> {
+                this.template = f;
+                save();
             });
-            event.replyEphemeral("Template is " + (this.template != null ? template : "not set")).queue();
+            event.replyEphemeral("Le template est " + this.template)
+                    .queue();
         }
+
 
         public Command.Choice[] templateExample(CommandAutoCompleteInteractionEvent event) {
             String value = event.getFocusedOption().getValue();
@@ -261,59 +241,253 @@ public class Settings {
         public Parser getParser() {
             return JagTag.newDefaultBuilder().addMethods(DiscordLibrairies.allMethods()).build();
         }
-
     }
 
-    public class Music implements BackSettings {
+    public static class Music extends ESettings {
+        @GroupProvider
+        @SettingsEntry
+        public Youtube    youtube    = new Youtube(this);
+        @GroupProvider
+        @SettingsEntry
+        public Soundcloud soundcloud = new Soundcloud(this);
+        @GroupProvider
+        @SettingsEntry
+        public Bandcamp   bandcamp   = new Bandcamp(this);
+        @GroupProvider
+        @SettingsEntry
+        public Vimeo      vimeo      = new Vimeo(this);
+        @GroupProvider
+        @SettingsEntry
+        public Twitch     twitch     = new Twitch(this);
+        @GroupProvider
+        @SettingsEntry
+        public Beam       beam       = new Beam(this);
+        @GroupProvider
+        @SettingsEntry
+        public Getyarn    getyarn    = new Getyarn(this);
+        @GroupProvider
+        @SettingsEntry
+        public Http       http       = new Http(this);
+        @GroupProvider
+        @SettingsEntry
+        public Local      local      = new Local(this);
 
-        public boolean enabled = false;
+        @SettingsEntry
+        public boolean enabled = true;
 
-        @Override
-        public void load(Config config) {
-            enabled = config.getOrElse("music.enabled", enabled);
+        protected Music(ESettings parent) {
+            super("music", parent);
         }
 
-        @Override
-        public void save(Config config) {
-            config.set("music.enabled", enabled);
-        }
-
-        @Override
-        public ConfigSpec completeSpec(ConfigSpec spec) {
-            spec.define("music.enabled", enabled);
-            return spec;
-        }
-
-        @Override
-        public boolean enabled() {
-            return enabled;
-        }
-
-        @SlashCommand.Sub(name = "enable", description = "Enable the music system")
+        @Sub(name = "enable", description = "Enable the music system")
         public void enable(
                 GuildSlashCommandEvent event,
                 @SlashCommand.Option Optional<Boolean> enable
         ) {
             enable.ifPresent(b -> {
                 enabled = b;
-                Settings.this.save();
+                save();
             });
-            event.replyEphemeral("Music system is " + (enabled() ? "enabled" : "disabled")).queue();
+            event.replyEphemeral("Le systéme de musique est " + (enabled ? "activé" : "désactivé"))
+                    .queue();
         }
-    }
 
-    @SlashCommand.Sub(name = "modules", description = "See module state")
-    public void modules(GuildSlashCommandEvent event) {
-        EmbedBuilder builder = new EmbedBuilder()
-                .setTitle("Modules")
-                .setDescription("Modules state");
-        for (BackSettings settings : settings) {
-            builder.addField(settings.getClass().getSimpleName(), translateBool(settings.enabled()), false);
+        public static class Youtube extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            public Youtube(ESettings parent) {
+                super("youtube", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the youtube source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source youtube est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
         }
-        event.replyEmbeds(builder.build()).setEphemeral(true).queue();
-    }
 
-    public String translateBool(boolean b) {
-        return b ? "Enabled" : "Disabled";
+        public static class Soundcloud extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Soundcloud(ESettings parent) {
+                super("soundcloud", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the soundcloud source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source soundcloud est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Bandcamp extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Bandcamp(ESettings parent) {
+                super("bandcamp", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the bandcamp source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source bandcamp est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Vimeo extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Vimeo(ESettings parent) {
+                super("vimeo", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the vimeo source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source vimeo est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Twitch extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Twitch(ESettings parent) {
+                super("twitch", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the twitch source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source twitch est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Beam extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Beam(ESettings parent) {
+                super("beam", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the beam source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source beam est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Getyarn extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Getyarn(ESettings parent) {
+                super("getyarn", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the getyarn source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source getyarn est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Http extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Http(ESettings parent) {
+                super("http", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the http source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source http est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
+
+        public static class Local extends ESettings {
+            @SettingsEntry
+            public boolean enabled = true;
+
+            protected Local(ESettings parent) {
+                super("local", parent);
+            }
+
+            @Sub(name = "enable", description = "Enable the local source")
+            public void enable(
+                    GuildSlashCommandEvent event,
+                    @SlashCommand.Option Optional<Boolean> enable
+            ) {
+                enable.ifPresent(b -> {
+                    enabled = b;
+                    save();
+                });
+                event.replyEphemeral("La source local est " + (enabled ? "activé" : "désactivé"))
+                        .queue();
+            }
+        }
     }
 }
