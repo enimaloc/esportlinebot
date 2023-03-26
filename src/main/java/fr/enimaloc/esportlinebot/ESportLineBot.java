@@ -38,9 +38,9 @@ public class ESportLineBot extends ListenerAdapter {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(ESportLineBot.class);
 
-    private final Settings   settings;
+    private final Settings settings;
     private final Connection sql;
-    private final JDA        jda;
+    private final JDA jda;
     private final JDAEnutils jdaEnutils;
 
     // TODO: Add a command Twitter
@@ -84,6 +84,15 @@ public class ESportLineBot extends ListenerAdapter {
         jdaEnutils.upsertAll();
     }
 
+    public static void main(String... args) {
+        try {
+            new ESportLineBot(args);
+        } catch (InterruptedException e) {
+            LOGGER.error("Error while starting the bot", e);
+            System.exit(1);
+        }
+    }
+
     @Init
     public void onReady(JDA jda) {
         Social.registerEmoji(jda, 1041090060738629722L);
@@ -110,14 +119,5 @@ public class ESportLineBot extends ListenerAdapter {
 
     public JDAEnutils jdaEnutils() {
         return jdaEnutils;
-    }
-
-    public static void main(String... args) {
-        try {
-            new ESportLineBot(args);
-        } catch (InterruptedException e) {
-            LOGGER.error("Error while starting the bot", e);
-            System.exit(1);
-        }
     }
 }

@@ -20,7 +20,9 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.IMemberContainer;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
-import net.dv8tion.jda.api.events.guild.voice.*;
+import net.dv8tion.jda.api.events.guild.voice.GuildVoiceGuildDeafenEvent;
+import net.dv8tion.jda.api.events.guild.voice.GuildVoiceGuildMuteEvent;
+import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.requests.restaction.ChannelAction;
 import org.jetbrains.annotations.NotNull;
@@ -38,19 +40,26 @@ import java.util.function.Supplier;
 public class TempChannel {
     public static final Supplier<NoSuchElementException> NO_TEMP_CHANNEL =
             () -> new NoSuchElementException("No temp channel found");
-    public static final Logger                           LOGGER          = LoggerFactory.getLogger(TempChannel.class);
-
-    private final Settings.TempChannel             settings;
-    private final Connection                       sql;
-    private final List<Instance>                   instances = new ArrayList<>();
+    public static final Logger LOGGER = LoggerFactory.getLogger(TempChannel.class);
+    @SlashCommand.GroupProvider(description = "Temporary channel blacklist commands related")
+    public final Blacklist blacklist = new Blacklist();
+    @SlashCommand.GroupProvider(description = "Temporary channel whitelist  commands related")
+    public final Whitelist whitelist = new Whitelist();
+    @SlashCommand.GroupProvider(description = "Temporary channel template commands related")
+    public final TemplateCmd template = new TemplateCmd();
+    private final Settings.TempChannel settings;
+    private final Connection sql;
+    private final List<Instance> instances = new ArrayList<>();
     private final Map<Long, Map<String, Template>> templates = new HashMap<>();
 
-    @SlashCommand.GroupProvider(description = "Temporary channel blacklist commands related")
-    public final Blacklist   blacklist = new Blacklist();
-    @SlashCommand.GroupProvider(description = "Temporary channel whitelist  commands related")
-    public final Whitelist   whitelist = new Whitelist();
-    @SlashCommand.GroupProvider(description = "Temporary channel template commands related")
-    public final TemplateCmd template  = new TemplateCmd();
+    public TempChannel(Settings.TempChannel settings, Connection sql) {
+        this.settings = settings;
+        this.sql = sql;
+    }
+
+    private static boolean isRole(JDA jda, long id) {
+        return jda.getRoleById(id) != null;
+    }
 
     @SlashCommand.Sub(name = "private", description = "Define if the channel is private")
     public void private0(GuildSlashCommandEvent event, @SlashCommand.Option(name = "private") boolean private0) {
@@ -60,11 +69,6 @@ public class TempChannel {
                 .orElseThrow(NO_TEMP_CHANNEL)
                 .setPrivate(event.getJDA(), private0).save(sql);
         event.replyEphemeral("The channel is now " + (private0 ? "private" : "public")).queue();
-    }
-
-    public TempChannel(Settings.TempChannel settings, Connection sql) {
-        this.settings = settings;
-        this.sql = sql;
     }
 
     @Init
@@ -246,150 +250,6 @@ public class TempChannel {
                 .findFirst();
     }
 
-    public class Blacklist {
-        @SlashCommand.Sub(description = "Add an user or role to the blacklist")
-        public void add(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
-            checks();
-
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .addBlacklist(target).save(sql);
-            event.replyEphemeral("Member added to blacklist").queue();
-        }
-
-        @SlashCommand.Sub(description = "Remove an user or role from the blacklist")
-        public void remove(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
-            checks();
-
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .removeBlacklist(target).save(sql);
-            event.replyEphemeral("Member removed from blacklist").queue();
-        }
-
-        @SlashCommand.Sub(description = "List the blacklist")
-        public void list(GuildSlashCommandEvent event) {
-            checks();
-
-            StringJoiner builder = new StringJoiner("\n - ");
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .getBlacklist()
-                    .forEach(id -> builder.add("<@" + (isRole(event.getJDA(), id) ? "&" : "") + id + ">"));
-            event.replyEphemeral("Blacklisted members:\n - " + builder).queue();
-        }
-    }
-
-    public class Whitelist {
-        @SlashCommand.Sub(description = "Add an user or role to the whitelist")
-        public void add(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
-            checks();
-
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .addWhitelist(target).save(sql);
-            event.replyEphemeral("Member added to whitelist").queue();
-        }
-
-        @SlashCommand.Sub(description = "Remove an user or role from the whitelist")
-        public void remove(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
-            checks();
-
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .removeWhitelist(target).save(sql);
-            event.replyEphemeral("Member removed from whitelist").queue();
-        }
-
-        @SlashCommand.Sub(description = "List the whitelist")
-        public void list(GuildSlashCommandEvent event) {
-            checks();
-
-            StringJoiner builder = new StringJoiner("\n - ");
-            Optional.ofNullable(event.getMember())
-                            .map(ISnowflake::getIdLong)
-                                    .flatMap(TempChannel.this::getInstanceByOwner)
-                    .orElseThrow(NO_TEMP_CHANNEL)
-                    .getWhitelist()
-                    .forEach(id -> builder.add("<@" + (isRole(event.getJDA(), id) ? "&" : "") + id + ">"));
-            event.replyEphemeral("Whitelisted members:\n - " + builder).queue();
-        }
-    }
-
-    public class TemplateCmd {
-        @SlashCommand.Sub(description = "Save the current channel as template")
-        public void save(GuildSlashCommandEvent event, @SlashCommand.Option String name) {
-            checks(event.getUser().getIdLong());
-
-            templates.get(event.getUser().getIdLong()).put(name,
-                    Template.fromInstance(event.getJDA(), name, getInstanceByOwner(event.getUser().getIdLong())
-                                    .orElseThrow(NO_TEMP_CHANNEL))
-                            .save(sql));
-            event.replyEphemeral("Template saved as " + name).queue();
-        }
-
-        @SlashCommand.Sub(description = "Delete a template")
-        public void delete(GuildSlashCommandEvent event,
-                           @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("nameAutocompletion"))) String name) {
-            checks(event.getUser().getIdLong());
-            Checks.contains(name, templates.get(event.getUser().getIdLong()).keySet(), "Template not found");
-
-            try (Statement statement = sql.createStatement()) {
-                statement.execute("DELETE FROM tc_templates WHERE owner_id = " + event.getMember().getIdLong() + " AND template_name = '" + name + "'");
-                templates.get(event.getMember().getIdLong()).remove(name);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-            event.replyEphemeral("Template removed").queue();
-        }
-
-        @SlashCommand.Sub(description = "List all templates")
-        public void list(GuildSlashCommandEvent event) {
-            checks(event.getUser().getIdLong());
-
-            StringJoiner joiner = new StringJoiner("\n - ");
-            templates.get(event.getUser().getIdLong()).keySet().forEach(joiner::add);
-            event.replyEphemeral("Templates:\n - " + joiner).queue();
-        }
-
-        @SlashCommand.Sub(description = "Load a template")
-        public void load(GuildSlashCommandEvent event,
-                         @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("nameAutocompletion"))) String name) {
-            checks(event.getUser().getIdLong());
-            Checks.contains(name, templates.get(event.getUser().getIdLong()).keySet(), "Template not found");
-
-            templates.get(event.getUser().getIdLong()).get(name).apply(event.getJDA(),
-                    getInstanceByOwner(event.getUser().getIdLong())
-                            .orElseThrow(NO_TEMP_CHANNEL));
-            event.replyEphemeral("Template '" + name + "' loaded").queue();
-        }
-
-        public String[] nameAutocompletion(CommandAutoCompleteInteractionEvent event) {
-            return templates.get(event.getUser().getIdLong())
-                    .keySet()
-                    .stream()
-                    .filter(name -> name.startsWith(event.getFocusedOption().getValue()))
-                    .toArray(String[]::new);
-        }
-
-        private void checks(long memberId) {
-            if (!templates.containsKey(memberId)) {
-                templates.put(memberId, new HashMap<>());
-            }
-            TempChannel.this.checks();
-        }
-    }
-
     private void checks() {
         Checks.check(settings.enabled(), "Temp channels are disabled");
     }
@@ -398,19 +258,38 @@ public class TempChannel {
 
         private final long channelId;
 
-        private final List<Long> muted    = new ArrayList<>();
+        private final List<Long> muted = new ArrayList<>();
         private final List<Long> deafened = new ArrayList<>();
-
+        private final List<Long> visitors = new ArrayList<>();
         private List<Long> blacklist = new ArrayList<>();
         private List<Long> whitelist = new ArrayList<>();
-
-        private final List<Long> visitors = new ArrayList<>();
-        private       long       ownerId;
+        private long ownerId;
 
         private boolean private0;
 
         public Instance(long channel) {
             this.channelId = channel;
+        }
+
+        public static List<Instance> loadAll(Connection sql, JDA jda) {
+            try (ResultSet result = sql.createStatement().executeQuery("SELECT DISTINCT channel_id FROM tc_instances;")) {
+                List<Instance> instances = new ArrayList<>();
+                while (result.next()) {
+                    Instance instance = new Instance(result.getLong(1));
+                    if (instance.invalid(jda) || instance.canBeDestroyed(jda)) {
+                        instance.destroy(sql, jda);
+                    } else {
+                        instances.add(instance.load(sql));
+                    }
+                }
+                LOGGER.info("Loaded {} instances", instances.size());
+                if (LOGGER.isDebugEnabled()) {
+                    instances.forEach(instance -> LOGGER.debug("-> {}", instance));
+                }
+                return instances;
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public long getChannelId() {
@@ -425,7 +304,7 @@ public class TempChannel {
         public Instance save(Connection sql) {
             List<Long> allUsers = getAllUsers();
 
-            final String RQ     = "REPLACE INTO tc_instances (channel_id, user_id, state) VALUES ";
+            final String RQ = "REPLACE INTO tc_instances (channel_id, user_id, state) VALUES ";
             StringJoiner values = new StringJoiner(", ");
             allUsers.forEach(unused -> values.add("(?, ?, ?)"));
 
@@ -488,27 +367,6 @@ public class TempChannel {
                 if (bitSet.get(4)) {
                     whitelist.add(userId);
                 }
-            }
-        }
-
-        public static List<Instance> loadAll(Connection sql, JDA jda) {
-            try (ResultSet result = sql.createStatement().executeQuery("SELECT DISTINCT channel_id FROM tc_instances;")) {
-                List<Instance> instances = new ArrayList<>();
-                while (result.next()) {
-                    Instance instance = new Instance(result.getLong(1));
-                    if (instance.invalid(jda) || instance.canBeDestroyed(jda)) {
-                        instance.destroy(sql, jda);
-                    } else {
-                        instances.add(instance.load(sql));
-                    }
-                }
-                LOGGER.info("Loaded {} instances", instances.size());
-                if (LOGGER.isDebugEnabled()) {
-                    instances.forEach(instance -> LOGGER.debug("-> {}", instance));
-                }
-                return instances;
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
         }
 
@@ -622,9 +480,9 @@ public class TempChannel {
 
         private void resetPermission(IPermissionHolder holder, Permission[] removedAllowed, Permission[] removedDenied) {
             Collection<Permission> allowed = null;
-            Collection<Permission> denied  = null;
-            PermissionOverride     override;
-            JDA                    jda     = holder.getGuild().getJDA();
+            Collection<Permission> denied = null;
+            PermissionOverride override;
+            JDA jda = holder.getGuild().getJDA();
             if ((getChannel(jda).getParentCategory() != null
                     && (override = Objects.requireNonNull(getChannel(jda)
                     .getParentCategory()).getPermissionOverride(holder)) != null)) {
@@ -780,7 +638,147 @@ public class TempChannel {
 
     }
 
-    private static boolean isRole(JDA jda, long id) {
-        return jda.getRoleById(id) != null;
+    public class Blacklist {
+        @SlashCommand.Sub(description = "Add an user or role to the blacklist")
+        public void add(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
+            checks();
+
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .addBlacklist(target).save(sql);
+            event.replyEphemeral("Member added to blacklist").queue();
+        }
+
+        @SlashCommand.Sub(description = "Remove an user or role from the blacklist")
+        public void remove(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
+            checks();
+
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .removeBlacklist(target).save(sql);
+            event.replyEphemeral("Member removed from blacklist").queue();
+        }
+
+        @SlashCommand.Sub(description = "List the blacklist")
+        public void list(GuildSlashCommandEvent event) {
+            checks();
+
+            StringJoiner builder = new StringJoiner("\n - ");
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .getBlacklist()
+                    .forEach(id -> builder.add("<@" + (isRole(event.getJDA(), id) ? "&" : "") + id + ">"));
+            event.replyEphemeral("Blacklisted members:\n - " + builder).queue();
+        }
+    }
+
+    public class Whitelist {
+        @SlashCommand.Sub(description = "Add an user or role to the whitelist")
+        public void add(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
+            checks();
+
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .addWhitelist(target).save(sql);
+            event.replyEphemeral("Member added to whitelist").queue();
+        }
+
+        @SlashCommand.Sub(description = "Remove an user or role from the whitelist")
+        public void remove(GuildSlashCommandEvent event, @SlashCommand.Option IMentionable target) {
+            checks();
+
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .removeWhitelist(target).save(sql);
+            event.replyEphemeral("Member removed from whitelist").queue();
+        }
+
+        @SlashCommand.Sub(description = "List the whitelist")
+        public void list(GuildSlashCommandEvent event) {
+            checks();
+
+            StringJoiner builder = new StringJoiner("\n - ");
+            Optional.ofNullable(event.getMember())
+                    .map(ISnowflake::getIdLong)
+                    .flatMap(TempChannel.this::getInstanceByOwner)
+                    .orElseThrow(NO_TEMP_CHANNEL)
+                    .getWhitelist()
+                    .forEach(id -> builder.add("<@" + (isRole(event.getJDA(), id) ? "&" : "") + id + ">"));
+            event.replyEphemeral("Whitelisted members:\n - " + builder).queue();
+        }
+    }
+
+    public class TemplateCmd {
+        @SlashCommand.Sub(description = "Save the current channel as template")
+        public void save(GuildSlashCommandEvent event, @SlashCommand.Option String name) {
+            checks(event.getUser().getIdLong());
+
+            templates.get(event.getUser().getIdLong()).put(name,
+                    Template.fromInstance(event.getJDA(), name, getInstanceByOwner(event.getUser().getIdLong())
+                                    .orElseThrow(NO_TEMP_CHANNEL))
+                            .save(sql));
+            event.replyEphemeral("Template saved as " + name).queue();
+        }
+
+        @SlashCommand.Sub(description = "Delete a template")
+        public void delete(GuildSlashCommandEvent event,
+                           @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("nameAutocompletion"))) String name) {
+            checks(event.getUser().getIdLong());
+            Checks.contains(name, templates.get(event.getUser().getIdLong()).keySet(), "Template not found");
+
+            try (Statement statement = sql.createStatement()) {
+                statement.execute("DELETE FROM tc_templates WHERE owner_id = " + event.getMember().getIdLong() + " AND template_name = '" + name + "'");
+                templates.get(event.getMember().getIdLong()).remove(name);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            event.replyEphemeral("Template removed").queue();
+        }
+
+        @SlashCommand.Sub(description = "List all templates")
+        public void list(GuildSlashCommandEvent event) {
+            checks(event.getUser().getIdLong());
+
+            StringJoiner joiner = new StringJoiner("\n - ");
+            templates.get(event.getUser().getIdLong()).keySet().forEach(joiner::add);
+            event.replyEphemeral("Templates:\n - " + joiner).queue();
+        }
+
+        @SlashCommand.Sub(description = "Load a template")
+        public void load(GuildSlashCommandEvent event,
+                         @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("nameAutocompletion"))) String name) {
+            checks(event.getUser().getIdLong());
+            Checks.contains(name, templates.get(event.getUser().getIdLong()).keySet(), "Template not found");
+
+            templates.get(event.getUser().getIdLong()).get(name).apply(event.getJDA(),
+                    getInstanceByOwner(event.getUser().getIdLong())
+                            .orElseThrow(NO_TEMP_CHANNEL));
+            event.replyEphemeral("Template '" + name + "' loaded").queue();
+        }
+
+        public String[] nameAutocompletion(CommandAutoCompleteInteractionEvent event) {
+            return templates.get(event.getUser().getIdLong())
+                    .keySet()
+                    .stream()
+                    .filter(name -> name.startsWith(event.getFocusedOption().getValue()))
+                    .toArray(String[]::new);
+        }
+
+        private void checks(long memberId) {
+            if (!templates.containsKey(memberId)) {
+                templates.put(memberId, new HashMap<>());
+            }
+            TempChannel.this.checks();
+        }
     }
 }

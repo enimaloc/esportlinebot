@@ -73,12 +73,11 @@ import java.util.stream.Stream;
 @SlashCommand(name = "music", description = "Music commands related")
 public class MusicModule {
 
-    private final Settings.Music               settings;
-    private final Connection                   sql;
-    private final AudioPlayerManager           playerManager;
+    private final Connection sql;
+    private final AudioPlayerManager playerManager;
     private final Map<Long, GuildMusicManager> musicManagers;
-    private final GLA                          genius   = new GLA();
-    private final Cache<CachedTrack>           cache    = new Cache<>(1, TimeUnit.HOURS) {
+    private final GLA genius = new GLA();
+    private final Cache<CachedTrack> cache = new Cache<>(1, TimeUnit.HOURS) {
         @Override
         public boolean add(CachedTrack cachedTrack) {
             try {
@@ -116,7 +115,7 @@ public class MusicModule {
         }
     };
     @SlashCommand.GroupProvider
-    public        Playlist                     playlist = new Playlist();
+    public Playlist playlist = new Playlist();
 
     public MusicModule(Settings.Music settings, Connection sql) {
         this.settings = settings;
@@ -149,7 +148,7 @@ public class MusicModule {
 
     private static String formatTime(long time) {
         StringJoiner joiner = new StringJoiner(":");
-        long         hours  = time / 3600000;
+        long hours = time / 3600000;
         if (hours > 0) {
             joiner.add(String.format("%02d", hours));
         }
@@ -365,7 +364,7 @@ public class MusicModule {
                      @SlashCommand.Option String title,
                      @SlashCommand.Option Optional<VoiceChannel> channel) {
         GuildMusicManager musicManager = getGuildAudioPlayer(Objects.requireNonNull(event.getGuild()));
-        AudioChannel      audioChannel = channel.orElseGet(() -> event.getMember().getVoiceState().getChannel().asVoiceChannel());
+        AudioChannel audioChannel = channel.orElseGet(() -> event.getMember().getVoiceState().getChannel().asVoiceChannel());
 
         if (Stream.of("http", "https").noneMatch(title::startsWith)) {
             title = "ytsearch:" + title;
@@ -419,9 +418,9 @@ public class MusicModule {
             @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("nextTracks"))) Optional<String> to/*,
             @SlashCommand.Option OptionalInt n*/
     ) {
-        OptionalInt       n           = OptionalInt.empty();
+        OptionalInt n = OptionalInt.empty();
         GuildMusicManager audioPlayer = getGuildAudioPlayer(event.getGuild());
-        String            reply       = "Skipped ";
+        String reply = "Skipped ";
         if (to.isPresent()
                 && audioPlayer.scheduler.getQueue()
                 .stream()
@@ -455,11 +454,12 @@ public class MusicModule {
 
     @SlashCommand.Sub(description = "Show now playing song")
     public void nowPlaying(GuildSlashCommandEvent event, Optional<Boolean> sticky) {
-        if (sticky.isPresent() && sticky.get()) {
+        if (sticky.orElse(false)) {
             sticky(event);
+            return;
         }
         GuildMusicManager musicManager = getGuildAudioPlayer(event.getGuild());
-        AudioTrack        track        = musicManager.player.getPlayingTrack();
+        AudioTrack track = musicManager.player.getPlayingTrack();
 
         if (track == null) {
             event.replyEphemeral("Nothing").queue();
@@ -492,7 +492,7 @@ public class MusicModule {
             event.getHook().editOriginal("No track playing, please specify a track").queue();
         }
 
-        String                     title   = songName.orElseGet(() -> playingTrack.getInfo().title);
+        String title = songName != null ? songName : playingTrack.getInfo().title;
         LinkedList<SongSearch.Hit> results = genius.search(title).getHits();
         while (results.isEmpty() && title.matches(".*[(\\[{].*[)\\]}]$")) {
             String oldTitle = title;
@@ -520,9 +520,9 @@ public class MusicModule {
                     .setActionRow(InteractionProcessor.getInteraction("delete").orElseThrow().component())
                     .queue();
         } else {
-            List<MessageEmbed> embeds      = new ArrayList<>();
-            String             content     = result.fetchLyrics().trim();
-            long               lastMessage = -1;
+            List<MessageEmbed> embeds = new ArrayList<>();
+            String content = result.fetchLyrics().trim();
+            long lastMessage = -1;
             while (content.length() >= MessageEmbed.DESCRIPTION_MAX_LENGTH - 2) {
                 int index = content.lastIndexOf("\n\n", MessageEmbed.DESCRIPTION_MAX_LENGTH);
                 if (index == -1) {
@@ -619,7 +619,7 @@ public class MusicModule {
                      @SlashCommand.Option @SlashCommand.Range(min = 0, max = 60) OptionalInt minutes,
                      @SlashCommand.Option @SlashCommand.Range(min = 1) OptionalInt hours) {
         GuildMusicManager player = getGuildAudioPlayer(event.getGuild());
-        AudioTrack        track  = player.player.getPlayingTrack();
+        AudioTrack track = player.player.getPlayingTrack();
         if (track == null) {
             event.replyEphemeral("Nothing is playing").queue();
             return;
@@ -663,9 +663,9 @@ public class MusicModule {
 
     @On
     public void onDisplayInteraction(ButtonInteractionEvent event) throws IOException {
-        GuildMusicManager manager   = getGuildAudioPlayer(event.getGuild());
-        AudioPlayer       player    = manager.player;
-        TrackScheduler    scheduler = manager.scheduler;
+        GuildMusicManager manager = getGuildAudioPlayer(event.getGuild());
+        AudioPlayer player = manager.player;
+        TrackScheduler scheduler = manager.scheduler;
         if (!event.getComponentId().startsWith("music:") || event.getMessageIdLong() != manager.messageId()) {
             return;
         }
@@ -701,7 +701,7 @@ public class MusicModule {
     }
 
     private void sticky(GuildSlashCommandEvent event) {
-        if (event.getGuild() == null || event.getGuild().getAudioManager().getConnectedChannel() == null) {
+        if (event.getGuild().getAudioManager().getConnectedChannel() == null) {
             event.replyEphemeral("Not connected to a voice channel").queue();
             return;
         }
@@ -778,11 +778,12 @@ public class MusicModule {
 
     private static class TrackViewer implements AudioLoadResultHandler {
 
-        protected final Consumer<AudioTrack>               trackConsumer;
-        protected final Consumer<AudioPlaylist>            searchResultConsumer;
+        protected final Consumer<AudioTrack> trackConsumer;
+        protected final Consumer<AudioPlaylist> searchResultConsumer;
         protected final BiConsumer<Integer, AudioPlaylist> playlistConsumer;
-        protected final Consumer<Void>                     noMatchesConsumer;
-        protected final Consumer<FriendlyException>        loadFailedConsumer;
+        protected final Consumer<Void> noMatchesConsumer;
+
+        protected final Consumer<FriendlyException> loadFailedConsumer;
 
         public TrackViewer(Consumer<AudioTrack> trackConsumer, BiConsumer<Integer, AudioPlaylist> playlistConsumer, Consumer<Void> noMatchesConsumer) {
             this(trackConsumer, null, playlistConsumer, noMatchesConsumer, null);
@@ -843,24 +844,23 @@ public class MusicModule {
         public static final  int    QUEUE_SIZE         = 5;
         private static final String QUEUE_TRACK_FORMAT = "[%s](%s) by %s";
 
-        private final @NotNull JDA          jda;
-        private final @NotNull EmbedBuilder builder;
+        private final @NotNull JDA jda;
 
-        private @Nullable String       title;
-        private @Nullable String       url;
-        private @Nullable String       thumbnail;
-        private @Nullable String       author;
-        private @Nullable String       authorUrl;
-        private @Nullable String       authorIcon;
-        private @Nullable String       footer;
-        private @Nullable String       footerIcon;
-        private @Nullable Long         position;
-        private @Nullable Long         duration      = -1L;
-        private @Nullable Long         queueDuration = -1L;
-        private @Nullable Integer      volume        = 0;
+        private final @NotNull EmbedBuilder builder;
+        private @Nullable String title;
+        private @Nullable String url;
+        private @Nullable String thumbnail;
+        private @Nullable String author;
+        private @Nullable String authorUrl;
+        private @Nullable String authorIcon;
+        private @Nullable String footer;
+        private @Nullable String footerIcon;
+        private @Nullable Long position;
+        private @Nullable Long duration = -1L;
+        private @Nullable Long queueDuration = -1L;
+        private @Nullable Integer volume = 0;
         private @Nullable List<String> queuedTracks;
-        private @Nullable Boolean      paused;
-        private @Nullable Boolean      repeat;
+        private @Nullable Boolean paused;
 
         public NowPlayingEmbedBuilder(@NotNull JDA jda) {
             this(jda, new EmbedBuilder());
@@ -892,7 +892,7 @@ public class MusicModule {
                 }
             }
             GuildMusicManager player = musicModule.getGuildAudioPlayer(guild);
-            AudioTrack        track  = player.player.getPlayingTrack();
+            AudioTrack track = player.player.getPlayingTrack();
             if (track == null) {
                 return new NowPlayingEmbedBuilder(guild.getJDA());
             }
@@ -1072,18 +1072,18 @@ public class MusicModule {
         @SlashCommand.Sub
         public void play(GuildSlashCommandEvent event,
                          @SlashCommand.Option(autoCompletion = @SlashCommand.Option.AutoCompletion(target = @MethodTarget("playlistAutocomplete"))) String name) {
-            GuildMusicManager player   = getGuildAudioPlayer(event.getGuild());
-            PlaylistObj       obj      = get(event.getUser().getIdLong(), name);
-            List<String>      playlist = obj.references();
+            GuildMusicManager player = getGuildAudioPlayer(event.getGuild());
+            PlaylistObj obj = get(event.getUser().getIdLong(), name);
+            List<String> playlist = obj.references();
             if (playlist.isEmpty()) {
                 event.replyEphemeral("Playlist is empty").queue();
                 return;
             }
             event.replyEphemeral("Loading " + playlist.size() + " tracks from playlist " + name).queue();
             for (int i = 0, playlistSize = playlist.size(); i < playlistSize; i++) {
-                int         finalI   = i;
-                CachedTrack track    = cache.getOrCreate(t -> t.identifier().equals(playlist.get(finalI)), playlist.get(finalI));
-                String      trackUrl = track.url();
+                int finalI = i;
+                CachedTrack track = cache.getOrCreate(t -> t.identifier().equals(playlist.get(finalI)), playlist.get(finalI));
+                String trackUrl = track.url();
                 TrackLoader loader = new TrackLoader(
                         event.getMember().getVoiceState().getChannel(),
                         trackLoaded -> {
@@ -1120,9 +1120,9 @@ public class MusicModule {
             }
             StringJoiner joiner = new StringJoiner("\n");
             for (int i = 0, playlistSize = references.size(); i < playlistSize; i++) {
-                int                      finalI = i;
-                Cache.Entry<CachedTrack> entry  = cache.getWithMeta(t -> t.identifier().equals(references.get(finalI))).orElseThrow();
-                CachedTrack              track  = entry.value();
+                int finalI = i;
+                Cache.Entry<CachedTrack> entry = cache.getWithMeta(t -> t.identifier().equals(references.get(finalI))).orElseThrow();
+                CachedTrack track = entry.value();
                 joiner.add((i + 1) + ". [" + track.title() + "](<" + track.url() + ">) _cached " + TimeFormat.RELATIVE.format(entry.timestamp()) + "_");
             }
             String toString = joiner.toString();
@@ -1194,14 +1194,15 @@ public class MusicModule {
         }
 
         record PlaylistObj(long userId, String name, List<String> references) {
+
             public static final BiFunction<Long, String, Predicate<PlaylistObj>> GETTER_FILTER = (userId, name) -> p -> p.userId == userId && p.name.equals(name);
 
             public static List<PlaylistObj> loadAll(Connection sql) {
                 List<PlaylistObj> playlists = new ArrayList<>();
                 try (ResultSet result = sql.createStatement().executeQuery("SELECT * FROM playlists")) {
                     while (result.next()) {
-                        long   userId = result.getLong("user_id");
-                        String name   = result.getString("name");
+                        long userId = result.getLong("user_id");
+                        String name = result.getString("name");
                         playlists.stream()
                                 .filter(GETTER_FILTER.apply(userId, name))
                                 .findFirst()
@@ -1300,12 +1301,14 @@ public class MusicModule {
                     throw new RuntimeException(ex);
                 }
             }
+
         }
 
     }
 
     // region Helper classes
     private class TrackLoader extends TrackViewer {
+
 
         private final AudioChannel audioChannel;
 
@@ -1347,6 +1350,7 @@ public class MusicModule {
                 playlistConsumer.accept(first, playlist);
             }
         }
+
     }
     // endregion
 }

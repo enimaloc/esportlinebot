@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 public abstract class Cache<T> implements Set<T> {
 
     private final Set<Entry<T>> cache;
-    private       long          maxAge;
+    private final long maxAge;
+    private long lastClean = System.currentTimeMillis();
+    private boolean locked = false;
 
     public Cache(long maxAge) {
         this.maxAge = maxAge;

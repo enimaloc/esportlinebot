@@ -23,9 +23,9 @@ import java.util.function.Consumer;
  *
  */
 public class TrackScheduler extends AudioEventAdapter {
-    private final AudioPlayer               player;
+    private final AudioPlayer player;
     private final BlockingQueue<AudioTrack> queue;
-    private final Consumer<AudioTrack>      onNextTrack;
+    private final Consumer<AudioTrack> onNextTrack;
 
     /**
      * @param player The audio player this scheduler uses
