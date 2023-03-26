@@ -11,7 +11,7 @@ import fr.enimaloc.enutils.jda.annotation.*;
 import fr.enimaloc.enutils.jda.entities.GuildSlashCommandEvent;
 import fr.enimaloc.enutils.jda.utils.Checks;
 import fr.enimaloc.enutils.jda.utils.ChecksWR;
-import fr.enimaloc.esportlinebot.settings.Settings;
+import fr.enimaloc.esportlinebot.toml.settings.Settings;
 import me.jagrosh.jagtag.Parser;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
@@ -73,8 +73,8 @@ public class TempChannel {
 
     @Init
     public void init(JDA jda) {
-        VoiceChannel channel = jda.getVoiceChannelById(settings.triggerChannel());
-        if (settings.enabled() && channel == null) {
+        VoiceChannel channel = jda.getVoiceChannelById(settings.triggerChannel);
+        if (settings.enabled && channel == null) {
             settings.enabled = false;
             throw new IllegalStateException("Trigger channel not found, disabling temp channel");
         }
@@ -105,7 +105,7 @@ public class TempChannel {
 
         jda.getGuilds()
                 .stream()
-                .map(guild -> guild.getVoiceChannelById(settings.triggerChannel()))
+                .map(guild -> guild.getVoiceChannelById(settings.triggerChannel))
                 .filter(Objects::nonNull)
                 .map(IMemberContainer::getMembers)
                 .flatMap(Collection::stream)
@@ -118,7 +118,7 @@ public class TempChannel {
             return;
         }
         Optional<Instance> instance = getInstanceByChannel(event.getNewValue().getIdLong());
-        if (event.getNewValue().getIdLong() == settings.triggerChannel()) {
+        if (event.getNewValue().getIdLong() == settings.triggerChannel) {
             newChannel(event.getMember());
         } else if (instance.isPresent()) {
             event.getMember().mute(instance.get().isMuted(event.getMember().getIdLong()))
@@ -178,7 +178,7 @@ public class TempChannel {
     }
 
     private void newChannel(Member member) {
-        if (!settings.enabled()) {
+        if (!settings.enabled) {
             return;
         }
         Optional<Instance> filter = getInstanceByOwner(member.getIdLong());
@@ -197,7 +197,7 @@ public class TempChannel {
         parser.put("user", member.getUser());
         parser.put("member", member);
         parser.put("guild", member.getGuild());
-        Integer pos = settings.position();
+        Integer pos = settings.position;
         if (pos < 0) {
             pos = getCategory(member).map(Category::getVoiceChannels)
                     .map(l -> l.get(l.size() - 1))
@@ -213,7 +213,7 @@ public class TempChannel {
                     .getPositionRaw() - 2;
         }
         ChannelAction<VoiceChannel> action = member.getGuild()
-                .createVoiceChannel(parser.parse(settings.template()))
+                .createVoiceChannel(parser.parse(settings.template))
                 .addMemberPermissionOverride(member.getIdLong(), List.of(Permission.MANAGE_CHANNEL, Permission.VOICE_MUTE_OTHERS, Permission.VOICE_DEAF_OTHERS), null)
                 .reason("Temporary channel created by " + member.getUser().getAsTag())
                 .setPosition(pos);
@@ -228,7 +228,7 @@ public class TempChannel {
 
     @NotNull
     private Optional<Category> getCategory(Member member) {
-        return Optional.ofNullable(member.getGuild().getCategoryById(settings.categoryId()));
+        return Optional.ofNullable(member.getGuild().getCategoryById(settings.categoryId));
     }
 
     private Optional<Instance> getInstanceByOwner(long owner) {
@@ -251,7 +251,7 @@ public class TempChannel {
     }
 
     private void checks() {
-        Checks.check(settings.enabled(), "Temp channels are disabled");
+        Checks.check(settings.enabled, "Temp channels are disabled");
     }
 
     public static class Instance {

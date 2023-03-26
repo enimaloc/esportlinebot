@@ -13,7 +13,7 @@ import fr.enimaloc.enutils.jda.annotation.Init;
 import fr.enimaloc.enutils.jda.annotation.Interaction;
 import fr.enimaloc.esportlinebot.module.music.MusicModule;
 import fr.enimaloc.esportlinebot.module.tempChannel.TempChannel;
-import fr.enimaloc.esportlinebot.settings.Settings;
+import fr.enimaloc.esportlinebot.toml.settings.Settings;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -46,20 +46,20 @@ public class ESportLineBot extends ListenerAdapter {
     // TODO: Add a command Twitter
 
     public ESportLineBot(String... args) throws InterruptedException {
-        settings = new Settings();
-        settings.load(Path.of(Optional.ofNullable(ObjectUtils.getOr(() -> args[0], System.getenv("CONFIG_PATH")))
+        settings = new Settings(Path.of(Optional.ofNullable(ObjectUtils.getOr(() -> args[0], System.getenv("CONFIG_PATH")))
                 .orElse("config.toml")));
+        settings.load();
 
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection("jdbc:sqlite:" + settings.databasePath());
+            connection = DriverManager.getConnection("jdbc:sqlite:" + settings.databasePath);
         } catch (SQLException e) {
             LOGGER.error("Error while connecting to the database", e);
             System.exit(1);
         }
         sql = connection;
 
-        this.jda = JDABuilder.createLight(settings.token())
+        this.jda = JDABuilder.createLight(settings.token)
                 .enableCache(
                         CacheFlag.FORUM_TAGS,
                         CacheFlag.EMOJI,

@@ -1,13 +1,5 @@
-/*
- * Constant
- *
- * 0.0.1
- *
- * 18/05/2022
- */
-package fr.enimaloc.esportlinebot.settings;
+package fr.enimaloc.esportlinebot.toml.settings;
 
-import com.electronwill.nightconfig.core.ConfigSpec;
 import com.electronwill.nightconfig.core.file.FileConfig;
 import fr.enimaloc.enutils.classes.ObjectUtils;
 import fr.enimaloc.enutils.jda.annotation.MethodTarget;
@@ -17,6 +9,7 @@ import fr.enimaloc.enutils.jda.annotation.SlashCommand.Option;
 import fr.enimaloc.enutils.jda.annotation.SlashCommand.Sub;
 import fr.enimaloc.enutils.jda.entities.GuildSlashCommandEvent;
 import fr.enimaloc.esportlinebot.jagtag.DiscordLibrairies;
+import fr.enimaloc.esportlinebot.toml.TomlReader;
 import me.jagrosh.jagtag.JagTag;
 import me.jagrosh.jagtag.Method;
 import me.jagrosh.jagtag.Parser;
@@ -41,42 +34,30 @@ import java.util.Optional;
 @SlashCommand(name = "settings",
         description = "Adjust settings for the bot",
         permission = @fr.enimaloc.enutils.jda.annotation.Permission(permissions = {Permission.MANAGE_SERVER}))
-public class Settings extends ESettings {
-    public static       boolean DEBUG  = System.getenv("DEV") != null;
-    public static final Logger  LOGGER = LoggerFactory.getLogger(Settings.class);
+public class Settings extends TomlReader {
+    public static final Logger LOGGER = LoggerFactory.getLogger(Settings.class);
 
     @SettingsEntry
     public String databasePath = "database.db";
     @SettingsEntry
-    public String token        = ObjectUtils.getOr(System.getenv("DISCORD_TOKEN"), "");
+    public String token = ObjectUtils.getOr(System.getenv("DISCORD_TOKEN"), "");
     @SettingsEntry
-    public long   guildId      = 0;
+    public long guildId = 0;
+    @SettingsEntry
+    public String customizationPath = "customization.toml";
 
     @GroupProvider
     @SettingsEntry
-    public Ticket      ticket      = new Ticket(this);
+    public Ticket ticket = new Ticket(this);
     @GroupProvider
     @SettingsEntry
     public TempChannel tempChannel = new TempChannel(this);
     @GroupProvider
     @SettingsEntry
-    public Music       music       = new Music(this);
+    public Music music = new Music(this);
 
     public Settings(Path configPath) {
         super(FileConfig.builder(configPath).autosave().concurrent().build());
-    }
-
-    public void load() {
-        config.load();
-
-        ConfigSpec spec = new ConfigSpec();
-        spec = spec(spec);
-        int correct = spec.correct(config, (action, path, incorrectValue, correctedValue) -> LOGGER.warn("Corrected {} from {} to {}", path, incorrectValue, correctedValue));
-
-        load(config);
-        if (correct > 0) {
-            save(config);
-        }
     }
 
     @Sub(name = "database", description = "Change the database path")
@@ -89,13 +70,13 @@ public class Settings extends ESettings {
         event.replyEphemeral("Database path: " + this.databasePath).queue();
     }
 
-    public static class Ticket extends ESettings {
+    public static class Ticket extends TomlReader {
         @SettingsEntry
-        public long    forumId = 0L;
+        public long forumId = 0L;
         @SettingsEntry
         public boolean enabled = true;
 
-        protected Ticket(ESettings parent) {
+        protected Ticket(TomlReader parent) {
             super("ticket", parent);
         }
 
@@ -126,19 +107,19 @@ public class Settings extends ESettings {
         }
     }
 
-    public static class TempChannel extends ESettings {
+    public static class TempChannel extends TomlReader {
         @SettingsEntry
-        public boolean enabled        = true;
+        public boolean enabled = true;
         @SettingsEntry
-        public long    triggerChannel = 0L;
+        public long triggerChannel = 0L;
         @SettingsEntry
-        public long    categoryId     = 0L;
+        public long categoryId = 0L;
         @SettingsEntry
-        public int     position       = -1;
+        public int position = -1;
         @SettingsEntry
-        public String  template       = "{user:name} channel";
+        public String template = "{user:name} channel";
 
-        protected TempChannel(ESettings parent) {
+        protected TempChannel(TomlReader parent) {
             super("tempchannel", parent);
         }
 
@@ -243,39 +224,39 @@ public class Settings extends ESettings {
         }
     }
 
-    public static class Music extends ESettings {
+    public static class Music extends TomlReader {
         @GroupProvider
         @SettingsEntry
-        public Youtube    youtube    = new Youtube(this);
+        public Youtube youtube = new Youtube(this);
         @GroupProvider
         @SettingsEntry
         public Soundcloud soundcloud = new Soundcloud(this);
         @GroupProvider
         @SettingsEntry
-        public Bandcamp   bandcamp   = new Bandcamp(this);
+        public Bandcamp bandcamp = new Bandcamp(this);
         @GroupProvider
         @SettingsEntry
-        public Vimeo      vimeo      = new Vimeo(this);
+        public Vimeo vimeo = new Vimeo(this);
         @GroupProvider
         @SettingsEntry
-        public Twitch     twitch     = new Twitch(this);
+        public Twitch twitch = new Twitch(this);
         @GroupProvider
         @SettingsEntry
-        public Beam       beam       = new Beam(this);
+        public Beam beam = new Beam(this);
         @GroupProvider
         @SettingsEntry
-        public Getyarn    getyarn    = new Getyarn(this);
+        public Getyarn getyarn = new Getyarn(this);
         @GroupProvider
         @SettingsEntry
-        public Http       http       = new Http(this);
+        public Http http = new Http(this);
         @GroupProvider
         @SettingsEntry
-        public Local      local      = new Local(this);
+        public Local local = new Local(this);
 
         @SettingsEntry
         public boolean enabled = true;
 
-        protected Music(ESettings parent) {
+        protected Music(TomlReader parent) {
             super("music", parent);
         }
 
@@ -292,11 +273,11 @@ public class Settings extends ESettings {
                     .queue();
         }
 
-        public static class Youtube extends ESettings {
+        public static class Youtube extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            public Youtube(ESettings parent) {
+            public Youtube(TomlReader parent) {
                 super("youtube", parent);
             }
 
@@ -314,11 +295,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Soundcloud extends ESettings {
+        public static class Soundcloud extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Soundcloud(ESettings parent) {
+            protected Soundcloud(TomlReader parent) {
                 super("soundcloud", parent);
             }
 
@@ -336,11 +317,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Bandcamp extends ESettings {
+        public static class Bandcamp extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Bandcamp(ESettings parent) {
+            protected Bandcamp(TomlReader parent) {
                 super("bandcamp", parent);
             }
 
@@ -358,11 +339,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Vimeo extends ESettings {
+        public static class Vimeo extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Vimeo(ESettings parent) {
+            protected Vimeo(TomlReader parent) {
                 super("vimeo", parent);
             }
 
@@ -380,11 +361,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Twitch extends ESettings {
+        public static class Twitch extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Twitch(ESettings parent) {
+            protected Twitch(TomlReader parent) {
                 super("twitch", parent);
             }
 
@@ -402,11 +383,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Beam extends ESettings {
+        public static class Beam extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Beam(ESettings parent) {
+            protected Beam(TomlReader parent) {
                 super("beam", parent);
             }
 
@@ -424,11 +405,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Getyarn extends ESettings {
+        public static class Getyarn extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Getyarn(ESettings parent) {
+            protected Getyarn(TomlReader parent) {
                 super("getyarn", parent);
             }
 
@@ -446,11 +427,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Http extends ESettings {
+        public static class Http extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Http(ESettings parent) {
+            protected Http(TomlReader parent) {
                 super("http", parent);
             }
 
@@ -468,11 +449,11 @@ public class Settings extends ESettings {
             }
         }
 
-        public static class Local extends ESettings {
+        public static class Local extends TomlReader {
             @SettingsEntry
             public boolean enabled = true;
 
-            protected Local(ESettings parent) {
+            protected Local(TomlReader parent) {
                 super("local", parent);
             }
 
