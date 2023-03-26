@@ -13,6 +13,7 @@ import fr.enimaloc.enutils.jda.annotation.Init;
 import fr.enimaloc.enutils.jda.annotation.Interaction;
 import fr.enimaloc.esportlinebot.module.music.MusicModule;
 import fr.enimaloc.esportlinebot.module.tempChannel.TempChannel;
+import fr.enimaloc.esportlinebot.toml.customization.Customization;
 import fr.enimaloc.esportlinebot.toml.settings.Settings;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -39,6 +40,7 @@ public class ESportLineBot extends ListenerAdapter {
     public static final Logger LOGGER = LoggerFactory.getLogger(ESportLineBot.class);
 
     private final Settings settings;
+    private final Customization customization;
     private final Connection sql;
     private final JDA jda;
     private final JDAEnutils jdaEnutils;
@@ -49,6 +51,9 @@ public class ESportLineBot extends ListenerAdapter {
         settings = new Settings(Path.of(Optional.ofNullable(ObjectUtils.getOr(() -> args[0], System.getenv("CONFIG_PATH")))
                 .orElse("config.toml")));
         settings.load();
+        customization = new Customization(Path.of(Optional.ofNullable(ObjectUtils.getOr(() -> args[1], System.getenv("CUSTOMIZATION_PATH")))
+                .orElse(settings.customizationPath)));
+        customization.load();
 
         Connection connection = null;
         try {
