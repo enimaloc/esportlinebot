@@ -11,6 +11,7 @@ import fr.enimaloc.enutils.classes.ObjectUtils;
 import fr.enimaloc.enutils.jda.JDAEnutils;
 import fr.enimaloc.enutils.jda.annotation.Init;
 import fr.enimaloc.enutils.jda.annotation.Interaction;
+import fr.enimaloc.esportlinebot.entity.ELUserManager;
 import fr.enimaloc.esportlinebot.module.music.MusicModule;
 import fr.enimaloc.esportlinebot.module.tempChannel.TempChannel;
 import fr.enimaloc.esportlinebot.toml.customization.Customization;
@@ -46,6 +47,7 @@ public class ESportLineBot extends ListenerAdapter {
     private final JDAEnutils jdaEnutils;
 
     // TODO: Add a command Twitter
+    private final ELUserManager userManager;
 
     public ESportLineBot(String... args) throws InterruptedException {
         settings = new Settings(Path.of(Optional.ofNullable(ObjectUtils.getOr(() -> args[0], System.getenv("CONFIG_PATH")))
@@ -64,6 +66,7 @@ public class ESportLineBot extends ListenerAdapter {
         }
         sql = connection;
 
+        this.userManager = new ELUserManager(sql);
         this.jda = JDABuilder.createLight(settings.token)
                 .enableCache(
                         CacheFlag.FORUM_TAGS,
