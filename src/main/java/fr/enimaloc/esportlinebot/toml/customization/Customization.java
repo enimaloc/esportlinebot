@@ -2,12 +2,16 @@ package fr.enimaloc.esportlinebot.toml.customization;
 
 import com.electronwill.nightconfig.core.file.FileConfig;
 import fr.enimaloc.esportlinebot.toml.TomlReader;
+import fr.enimaloc.matcher.Matcher;
+import fr.enimaloc.matcher.syntaxe.*;
+import fr.enimaloc.matcher.syntaxe.predefined.*;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -15,6 +19,30 @@ import static net.dv8tion.jda.api.interactions.DiscordLocale.*;
 
 public class Customization extends TomlReader {
     public static final Logger LOGGER = LoggerFactory.getLogger(Customization.class);
+
+    public static Matcher getMatcher(TomlReader instance) {
+        return getMatcher(Collections.emptyMap(), instance);
+    }
+
+    public static Matcher getMatcher(Map<String, Object> env, TomlReader instance) {
+        Matcher matcher = new Matcher();
+        matcher.getenv().putAll(env);
+        matcher.getenv().put(CustomizationKeyword.TOML_PATH_KEY, instance.config);
+        matcher.register(ComparaisonKeyword.getKeywords());
+        matcher.register(VariableKeyword.getKeywords());
+        matcher.register(MathKeyword.getKeywords());
+        matcher.register(LogicalKeyword.getKeywords());
+        matcher.register(BitwiseKeyword.getKeywords());
+        matcher.register(FunctionKeyword.getKeywords());
+        matcher.register(StringKeyword.getKeywords());
+        matcher.register(StringUtilsKeyword.getKeywords());
+        matcher.register(DateTimeKeyword.getKeywords());
+        matcher.register(JDAKeyword.getKeywords());
+        matcher.register(MusicPlayerKeyword.getKeywords());
+        matcher.register(MatcherKeyword.getKeywords());
+        matcher.register(CustomizationKeyword.getKeywords());
+        return matcher;
+    }
 
     @SettingsEntry
     public Music music = new Music(this);
@@ -35,45 +63,25 @@ public class Customization extends TomlReader {
             @SettingsEntry
             public Button button = new Button(this);
             @SettingsEntry
-            @SettingsComment("First formatted string is for volume bar")
-            @SettingsComment("Second formatted string is for volume command mention, formatted string")
-            public Map<DiscordLocale, String> volume = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "Volume: %s %s",
-                    ENGLISH_US, "Volume: %s %s",
-                    FRENCH, "Volume: %s %s",
-                    GERMAN, "Lautstärke: %s %s",
-                    ITALIAN, "Volume: %s %s",
-                    SPANISH, "Volumen: %s %s"
-            ));
-            @SettingsEntry
-            @SettingsComment("First formatted string is for volume command mention")
-            public Map<DiscordLocale, String> volumeCommand = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "_Edit with %s_",
-                    ENGLISH_US, "_Edit with %s_",
-                    FRENCH, "_Modifier avec %s_",
-                    GERMAN, "_Bearbeiten mit %s_",
-                    ITALIAN, "_Modifica con %s_",
-                    SPANISH, "_Editar con %s_"
-            ));
-            @SettingsEntry
-            @SettingsComment("First formatted string is for volume name")
-            public Map<DiscordLocale, String> volumeNoCommand = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "",
-                    ENGLISH_US, "",
-                    FRENCH, "",
-                    GERMAN, "",
-                    ITALIAN, "",
-                    SPANISH, ""
-            ));
-            @SettingsEntry
-            @SettingsComment("First formatted string is for remaining duration")
-            public Map<DiscordLocale, String> remaining = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "Remaining: %s",
-                    ENGLISH_US, "Remaining: %s",
-                    FRENCH, "Restant: %s",
-                    GERMAN, "Verbleibend: %s",
-                    ITALIAN, "Rimanente: %s",
-                    SPANISH, "Restante: %s"
+            public Map<DiscordLocale, String> embedDescription = new EnumMap<>(Map.of(
+                    ENGLISH_UK, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nVolume: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Edit with {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nRemaining: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}",
+                    ENGLISH_US, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nVolume: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Edit with {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nRemaining: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}",
+                    FRENCH, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nVolume: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Modifier avec {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nRestant: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}",
+                    GERMAN, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nLautstärke: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Bearbeiten mit {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nVerbleibend: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}",
+                    ITALIAN, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nVolume: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Modifica con {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nRimanente: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}",
+                    SPANISH, "{time.format:{music.track.position}} {strutils.progressBar:15:─:⊚:─:{music.track.duration}:{music.track.position}:{if.lower:{music.track.position}:0}} {if:{if.lower:{music.track.position}:0}:-:}{time.format:{music.track.duration}}" +
+                            "\nVolumen: {strutils.progressBar:15:▮:▮:▯:150:{music.player.volume}} _Editar con {jda.commandMention:music.volume:`/music volume`}_" +
+                            "\nRestante: {if:{if.lower:{music.list.duration}:0}:∞:{time.format:{music.list.duration}}}"
             ));
             @SettingsEntry
             public Map<DiscordLocale, String> queue = new EnumMap<>(Map.of(
@@ -85,47 +93,31 @@ public class Customization extends TomlReader {
                     SPANISH, "Cola"
             ));
             @SettingsEntry
-            @SettingsComment("First formatted string is for title")
-            @SettingsComment("Second formatted string is for url")
-            @SettingsComment("Third formatted string is for author")
             public Map<DiscordLocale, String> queueTitle = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "[%s](%s) by %s",
-                    ENGLISH_US, "[%s](%s) by %s",
-                    FRENCH, "[%s](%s) par %s",
-                    GERMAN, "[%s](%s) von %s",
-                    ITALIAN, "[%s](%s) di %s",
-                    SPANISH, "[%s](%s) por %s"
+                    ENGLISH_UK, "[{music.track.title}]({music.track.uri}) by {music.track.author}",
+                    ENGLISH_US, "[{music.track.title}]({music.track.uri}) by {music.track.author}",
+                    FRENCH, "[{music.track.title}]({music.track.uri}) par {music.track.author}",
+                    GERMAN, "[{music.track.title}]({music.track.uri}) von {music.track.author}",
+                    ITALIAN, "[{music.track.title}]({music.track.uri}) di {music.track.author}",
+                    SPANISH, "[{music.track.title}]({music.track.uri}) por {music.track.author}"
             ));
             @SettingsEntry
-            @SettingsComment("First formatted int is for remaining tracks")
-            @SettingsComment("Second formatted string is for command mention")
             public Map<DiscordLocale, String> queueMore = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "_and **%d** more..._%n%s",
-                    ENGLISH_US, "_and **%d** more..._%n%s",
-                    FRENCH, "_et **%d** autres..._%n%s",
-                    GERMAN, "_und **%d** mehr..._%n%s",
-                    ITALIAN, "_e **%d** altri..._%n%s",
-                    SPANISH, "_y **%d** más..._%n%s"
+                    ENGLISH_UK, "_and **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** more..._\n_More details with {jda.commandMention:music.queue:`/music queue`}_",
+                    ENGLISH_US, "_and **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** more..._\n_More details with {jda.commandMention:music.queue:`/music queue`}_",
+                    FRENCH, "_et **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** autres..._\n_Plus de détails avec {jda.commandMention:music.queue:`/music queue`}_",
+                    GERMAN, "_und **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** mehr..._\n_Mehr Details mit {jda.commandMention:music.queue:`/music queue`}_",
+                    ITALIAN, "_e **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** altri..._\n_Ulteriori dettagli con {jda.commandMention:music.queue:`/music queue`}_",
+                    SPANISH, "_y **{math.sub:{music.queue.size}:{var.get:const.queueSize}}** más..._\n_Más detalles con {jda.commandMention:music.queue:`/music queue`}_"
             ));
             @SettingsEntry
-            @SettingsComment("First formatted string command mention")
-            public Map<DiscordLocale, String> queueMoreCommand = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "_More details with %s_",
-                    ENGLISH_US, "_More details with %s_",
-                    FRENCH, "_Plus de détails avec %s_",
-                    GERMAN, "_Mehr Details mit %s_",
-                    ITALIAN, "_Ulteriori dettagli con %s_",
-                    SPANISH, "_Más detalles con %s_"
-            ));
-            @SettingsEntry
-            @SettingsComment("First formatted string is for command name")
-            public Map<DiscordLocale, String> queueMoreNoCommand = new EnumMap<>(Map.of(
-                    ENGLISH_UK, "",
-                    ENGLISH_US, "",
-                    FRENCH, "",
-                    GERMAN, "",
-                    ITALIAN, "",
-                    SPANISH, ""
+            public Map<DiscordLocale, String> warningNoTrack = new EnumMap<>(Map.of(
+                    ENGLISH_UK, "There is no track playing.",
+                    ENGLISH_US, "There is no track playing.",
+                    FRENCH, "Il n'y a pas de piste en cours de lecture.",
+                    GERMAN, "Es wird gerade kein Titel abgespielt.",
+                    ITALIAN, "Non c'è nessuna traccia in riproduzione.",
+                    SPANISH, "No hay ninguna pista en reproducción."
             ));
 
             public NowPlaying(TomlReader parent) {
