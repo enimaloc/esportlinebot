@@ -5,7 +5,7 @@ import java.util.StringJoiner;
 public class DateTimeKeyword {
 
     public static Keyword[] getKeywords() {
-        return new Keyword[] {
+        return new Keyword[]{
                 now(),
                 format(),
                 until(),

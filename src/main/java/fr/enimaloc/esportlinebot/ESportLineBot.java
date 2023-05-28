@@ -12,6 +12,7 @@ import fr.enimaloc.enutils.jda.JDAEnutils;
 import fr.enimaloc.enutils.jda.annotation.Init;
 import fr.enimaloc.enutils.jda.annotation.Interaction;
 import fr.enimaloc.esportlinebot.entity.ELUserManager;
+import fr.enimaloc.esportlinebot.module.fun.LevelModule;
 import fr.enimaloc.esportlinebot.module.music.MusicModule;
 import fr.enimaloc.esportlinebot.module.tempChannel.TempChannel;
 import fr.enimaloc.esportlinebot.toml.customization.Customization;
@@ -87,7 +88,10 @@ public class ESportLineBot extends ListenerAdapter {
         this.jdaEnutils = JDAEnutils.builder()
                 .setJda(jda)
                 .addCommand(settings)
-                .addToAll(new TempChannel(settings.tempChannel, sql), new MusicModule(settings.music, sql))
+                .addInteraction(this)
+                .addToAll(
+                        new TempChannel(settings.tempChannel, sql),
+                        new LevelModule(settings.level, customization.level, sql, userManager))
                 .build();
         jdaEnutils.upsertAll();
     }

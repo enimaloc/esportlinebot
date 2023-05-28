@@ -1,7 +1,6 @@
 package fr.enimaloc.matcher.syntaxe;
 
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import fr.enimaloc.esportlinebot.module.music.GuildMusicManager;
 import fr.enimaloc.matcher.Matcher;
 
 public class TrackKeyword {

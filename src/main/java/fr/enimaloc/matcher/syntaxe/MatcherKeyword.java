@@ -3,7 +3,7 @@ package fr.enimaloc.matcher.syntaxe;
 public class MatcherKeyword {
 
     public static Keyword[] getKeywords() {
-        return new Keyword[] {
+        return new Keyword[]{
                 apply()
         };
     }

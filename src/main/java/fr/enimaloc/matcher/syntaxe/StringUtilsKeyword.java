@@ -1,8 +1,5 @@
 package fr.enimaloc.matcher.syntaxe;
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-
 public class StringUtilsKeyword {
 
     public static Keyword[] getKeywords() {
@@ -16,7 +13,7 @@ public class StringUtilsKeyword {
             if (instruction.getArgsCount() < 1 || instruction.getArgsCount() > 7) {
                 throw new IllegalArgumentException("progressBar() takes only one to seven arguments");
             }
-            int size =instruction.getArgs(0)
+            int size = instruction.getArgs(0)
                     .mapLeft(i -> i.run(matcher))
                     .map(String.class, Integer::parseInt)
                     .getAny(Integer.class);
@@ -44,6 +41,7 @@ public class StringUtilsKeyword {
             long value = instruction.getArgsCount() >= 6
                     ? instruction.getArgs(5)
                     .mapLeft(i -> i.run(matcher))
+                    .map(String.class, s -> s.contains(".") ? s.substring(0, s.indexOf('.')) : s)
                     .map(String.class, Long::parseLong)
                     .getAny(Long.class)
                     : 10;
