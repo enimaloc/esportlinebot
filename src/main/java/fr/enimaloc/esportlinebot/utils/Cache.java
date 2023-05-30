@@ -36,7 +36,9 @@ public abstract class Cache<T> implements Set<T> {
 
     @Override
     public boolean contains(Object o) {
-        return this.cache.stream().anyMatch(entry -> entry.value.equals(o) && !entry.isExpired(this.maxAge));
+        return this.cache.stream()
+                .filter(entry -> !entry.isExpired(maxAge))
+                .anyMatch(entry -> entry.value.equals(o));
     }
 
     @NotNull
@@ -72,6 +74,9 @@ public abstract class Cache<T> implements Set<T> {
     public abstract T factory(Object... objects);
 
     public T getOrCreate(int index, Object... factoryObjects) {
+        if (locked) {
+            return factory(factoryObjects);
+        }
         return get(index).orElseGet(() -> {
             T t = factory(factoryObjects);
             add(t);
@@ -165,16 +170,31 @@ public abstract class Cache<T> implements Set<T> {
     }
 
     public int clean() {
+        if (System.currentTimeMillis() - this.lastClean < this.maxAge) {
+            return 0;
+        }
+        this.lastClean = System.currentTimeMillis();
         int size = cache.size();
         this.cache.removeIf(entry -> entry.isExpired(this.maxAge));
         return size - cache.size();
     }
 
     public void addOrUpdate(T t) {
+        if (locked) {
+            return;
+        }
         clean();
         if (!contains(t)) {
             add(t);
         }
+    }
+
+    public void lock() {
+        this.locked = true;
+    }
+
+    public void unlock() {
+        this.locked = false;
     }
 
     public record Entry<T>(T value, long timestamp) {

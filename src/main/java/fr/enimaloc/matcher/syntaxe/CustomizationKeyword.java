@@ -6,10 +6,11 @@ public class CustomizationKeyword {
 
     public static final String TOML_PATH_KEY = "customization.toml";
 
-    CustomizationKeyword() {}
+    CustomizationKeyword() {
+    }
 
     public static Keyword[] getKeywords() {
-        return new Keyword[] {
+        return new Keyword[]{
                 get()
         };
     }

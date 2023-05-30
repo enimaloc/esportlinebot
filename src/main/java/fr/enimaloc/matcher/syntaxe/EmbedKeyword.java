@@ -18,7 +18,7 @@ public class EmbedKeyword {
     }
 
     public static Keyword[] getKeywords() {
-        return new Keyword[] {
+        return new Keyword[]{
                 create(),
                 title(),
                 description(),

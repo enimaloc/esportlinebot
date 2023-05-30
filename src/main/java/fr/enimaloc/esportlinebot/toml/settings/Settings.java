@@ -10,6 +10,10 @@ import fr.enimaloc.enutils.jda.annotation.SlashCommand.Sub;
 import fr.enimaloc.enutils.jda.entities.GuildSlashCommandEvent;
 import fr.enimaloc.esportlinebot.jagtag.DiscordLibrairies;
 import fr.enimaloc.esportlinebot.toml.TomlReader;
+import fr.enimaloc.esportlinebot.toml.customization.Customization;
+import fr.enimaloc.esportlinebot.utils.MathUtils;
+import fr.enimaloc.matcher.Matcher;
+import fr.enimaloc.matcher.syntaxe.ELUserKeyword;
 import me.jagrosh.jagtag.JagTag;
 import me.jagrosh.jagtag.Method;
 import me.jagrosh.jagtag.Parser;
@@ -22,6 +26,7 @@ import net.dv8tion.jda.api.interactions.commands.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.MathContext;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +60,9 @@ public class Settings extends TomlReader {
     @GroupProvider
     @SettingsEntry
     public Music music = new Music(this);
+    @GroupProvider
+    @SettingsEntry
+    public Level level = new Level(this);
     @GroupProvider
     @SettingsEntry
     public Stats stats = new Stats(this);
@@ -472,6 +480,93 @@ public class Settings extends TomlReader {
                 event.replyEphemeral("La source local est " + (enabled ? "activé" : "désactivé"))
                         .queue();
             }
+        }
+    }
+
+    public static class Level extends TomlReader {
+        @SettingsEntry
+        public boolean enabled = true;
+        @SettingsEntry
+        public boolean announce = true;
+        @SettingsEntry
+        public String levelUpFunction = "5 * ({eluser.level} ^ 2) + (50 * {eluser.level}) + 100";
+        @SettingsEntry
+        public int minRandomXp = 15;
+        @SettingsEntry
+        public int maxRandomXp = 25;
+
+        protected Level(TomlReader parent) {
+            super("level", parent);
+        }
+
+        public boolean canLevelUp(int level, double newXP) {
+            Matcher matcher = Customization.getMatcher(this);
+            matcher.getenv().put(ELUserKeyword.OVERRIDE_USER_LEVEL_PATH_KEY, level);
+            matcher.getenv().put(ELUserKeyword.OVERRIDE_USER_XP_PATH_KEY, newXP);
+            return newXP > MathUtils.eval(matcher.apply(levelUpFunction), new MathContext(10)).doubleValue();
+        }
+
+        public double getXpRequired(int level) {
+            Matcher matcher = Customization.getMatcher(this);
+            matcher.getenv().put(ELUserKeyword.OVERRIDE_USER_LEVEL_PATH_KEY, level - 1);
+            return MathUtils.eval(matcher.apply(levelUpFunction), new MathContext(10)).doubleValue();
+        }
+
+        @Sub(name = "enable", description = "Enable the level system")
+        public void enable(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> enable
+        ) {
+            enable.ifPresent(b -> {
+                enabled = b;
+                save();
+            });
+            event.replyEphemeral("Le système de niveau est " + (enabled ? "activé" : "désactivé"))
+                    .queue();
+        }
+
+        @Sub(name = "announce", description = "Enable the level up announce")
+        public void announce(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> enable
+        ) {
+            enable.ifPresent(b -> {
+                announce = b;
+                save();
+            });
+            event.replyEphemeral("L'annonce de niveau est " + (announce ? "activé" : "désactivé"))
+                    .queue();
+        }
+
+        @Sub(name = "levelUpFunction", description = "Set the level up function")
+        public void levelUpFunction(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<String> function
+        ) {
+            function.ifPresent(s -> {
+                levelUpFunction = s;
+                save();
+            });
+            event.replyEphemeral("La fonction de niveau est définie sur " + function)
+                    .queue();
+        }
+
+        @Sub(name = "randomXp", description = "Set random xp range")
+        public void randomXp(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Integer> min,
+                @SlashCommand.Option Optional<Integer> max
+        ) {
+            min.ifPresent(i -> {
+                minRandomXp = i;
+                save();
+            });
+            max.ifPresent(i -> {
+                maxRandomXp = i;
+                save();
+            });
+            event.replyEphemeral("Le minimum d'xp aléatoire est définie sur [" + min + ", " + max + "[")
+                    .queue();
         }
     }
 
