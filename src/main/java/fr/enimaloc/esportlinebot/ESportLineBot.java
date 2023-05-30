@@ -84,11 +84,17 @@ public class ESportLineBot extends ListenerAdapter {
                 .setRequiredScopes("applications.commands")
                 .awaitReady();
 
-        this.jdaEnutils = JDAEnutils.builder()
-                .setJda(jda)
-                .addCommand(settings)
-                .addToAll(new TempChannel(settings.tempChannel, sql), new MusicModule(settings.music, sql))
-                .build();
+        try {
+            this.jdaEnutils = JDAEnutils.builder()
+                    .setJda(jda)
+                    .addCommand(settings)
+                    .addToAll(new TempChannel(settings.tempChannel, sql))
+                    .addToAll(settings.stats.enabled ? new StatsModule(settings.stats) : null)
+                    .build();
+        } catch (IOException e) {
+            LOGGER.error("Unable to start metrics module");
+            throw new RuntimeException(e);
+        }
         jdaEnutils.upsertAll();
     }
 
