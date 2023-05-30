@@ -83,6 +83,12 @@ public class StatsModule {
             .labelNames("guild", "author")
             .register();
 
+    public static final Gauge TOTAL_XP_COUNTER = Gauge.build()
+            .name("eline_total_xp_counter")
+            .help("Total xp of the user")
+            .labelNames("guild", "author")
+            .register();
+
 
     public StatsModule(Settings.Stats settings) throws IOException {
         if (settings.includeDefaultMetrics) {

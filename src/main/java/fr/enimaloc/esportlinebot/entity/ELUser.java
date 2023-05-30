@@ -1,5 +1,7 @@
 package fr.enimaloc.esportlinebot.entity;
 
+import fr.enimaloc.esportlinebot.module.stats.StatsModule;
+
 public class ELUser {
     private final long id;
     private final long guildId;
@@ -21,6 +23,7 @@ public class ELUser {
         this.level = level;
         this.xp = xp;
         this.totalXp = totalXp;
+        updatePrometheus();
     }
 
     public long getId() {
@@ -37,6 +40,7 @@ public class ELUser {
 
     public void setLevel(int level) {
         this.level = level;
+        updatePrometheus();
     }
 
     public double getXp() {
@@ -46,6 +50,7 @@ public class ELUser {
     public void setXp(double xp) {
         this.xp = xp;
         this.totalXp += xp;
+        updatePrometheus();
     }
 
     public void setExp(int level, double xp) {
@@ -60,5 +65,11 @@ public class ELUser {
     public void levelUp() {
         this.level++;
         this.setXp(0);
+    }
+
+    private void updatePrometheus() {
+        StatsModule.LEVEL_COUNTER.labels(String.valueOf(this.guildId), String.valueOf(this.id)).set(this.level);
+        StatsModule.XP_COUNTER.labels(String.valueOf(this.guildId), String.valueOf(this.id)).set(this.xp);
+        StatsModule.TOTAL_XP_COUNTER.labels(String.valueOf(this.guildId), String.valueOf(this.id)).set(this.totalXp);
     }
 }

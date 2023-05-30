@@ -94,6 +94,7 @@ public class ESportLineBot extends ListenerAdapter {
                     .addCommand(settings)
                     .addToAll(new TempChannel(settings.tempChannel, sql))
                     .addToAll(settings.stats.enabled ? new StatsModule(settings.stats) : null)
+                    .addToAll(settings.level.enabled ? new LevelModule(settings.level, customization.level, sql, userManager) : null)
                     .build();
         } catch (IOException e) {
             LOGGER.error("Unable to start metrics module");
