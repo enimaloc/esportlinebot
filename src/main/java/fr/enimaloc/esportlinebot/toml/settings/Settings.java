@@ -63,6 +63,9 @@ public class Settings extends TomlReader {
     @GroupProvider
     @SettingsEntry
     public Level level = new Level(this);
+    @GroupProvider
+    @SettingsEntry
+    public Stats stats = new Stats(this);
 
     public Settings(Path configPath) {
         super(FileConfig.builder(configPath).autosave().concurrent().build());
@@ -563,6 +566,58 @@ public class Settings extends TomlReader {
                 save();
             });
             event.replyEphemeral("Le minimum d'xp aléatoire est définie sur [" + min + ", " + max + "[")
+                    .queue();
+        }
+    }
+
+    public static class Stats extends TomlReader {
+        @SettingsEntry
+        public boolean enabled = true;
+        @SettingsEntry
+        public int port = 8080;
+        @SettingsEntry
+        public boolean includeDefaultMetrics = true;
+
+        public Stats(TomlReader parent) {
+            super("stats", parent);
+        }
+
+        @Sub(name = "enable", description = "Enable the stats")
+        public void enable(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> enable
+        ) {
+            enable.ifPresent(b -> {
+                enabled = b;
+                save();
+            });
+            event.replyEphemeral("Les stats sont " + (enabled ? "activé" : "désactivé"))
+                    .queue();
+        }
+
+        @Sub(name = "port", description = "Change the port of the stats")
+        public void port(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Integer> port
+        ) {
+            port.ifPresent(p -> {
+                this.port = p;
+                save();
+            });
+            event.replyEphemeral("Le port des stats est " + this.port)
+                    .queue();
+        }
+
+        @Sub(name = "includeDefaultMetrics", description = "Change the default metrics")
+        public void includeDefaultMetrics(
+                GuildSlashCommandEvent event,
+                @SlashCommand.Option Optional<Boolean> includeDefaultMetrics
+        ) {
+            includeDefaultMetrics.ifPresent(b -> {
+                this.includeDefaultMetrics = b;
+                save();
+            });
+            event.replyEphemeral("Les metrics par défaut sont " + (this.includeDefaultMetrics ? "activé" : "désactivé"))
                     .queue();
         }
     }
