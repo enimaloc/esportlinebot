@@ -68,13 +68,16 @@ public class ESportLineBot extends ListenerAdapter {
                 .enableCache(
                         CacheFlag.FORUM_TAGS,
                         CacheFlag.EMOJI,
-                        CacheFlag.VOICE_STATE
+                        CacheFlag.VOICE_STATE,
+                        CacheFlag.ONLINE_STATUS
                 )
                 .enableIntents(
                         GatewayIntent.MESSAGE_CONTENT,
                         GatewayIntent.DIRECT_MESSAGE_TYPING,
+                        GatewayIntent.GUILD_MESSAGE_TYPING,
                         GatewayIntent.GUILD_VOICE_STATES,
-                        GatewayIntent.GUILD_MEMBERS
+                        GatewayIntent.GUILD_MEMBERS,
+                        GatewayIntent.GUILD_PRESENCES
                 )
                 .setMemberCachePolicy(MemberCachePolicy.ALL)
                 .build()
