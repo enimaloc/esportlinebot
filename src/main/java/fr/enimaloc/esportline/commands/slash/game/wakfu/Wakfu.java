@@ -532,6 +532,87 @@ public class Wakfu {
     }
     // endregion
 
+    // region Commands /game wakfu party
+
+    @Slash.Sub
+    public void partyCreate(GuildSlashCommandEvent event,
+                            @Slash.Option(name = "party-name") String partyName,
+                            @Slash.Option(name = "slots") int slots,
+                            @Slash.Option(name = "description") String description,
+                            @Slash.Option(name = "level") OptionalInt level) {
+        if (WakfuParty.REGISTERED_PARTIES.stream().anyMatch(p -> p.getOwnerId() == event.getMember().getIdLong())) {
+            event.deferReplyEphemeral().queue();
+            event.getHook().editOriginal("You are already the owner of a party").queue();
+            return;
+        }
+        if (WakfuParty.REGISTERED_PARTIES.stream().anyMatch(p -> p.getName().equals(partyName))) {
+            event.deferReplyEphemeral().queue();
+            event.getHook().editOriginal("A party with this name already exists").queue();
+            return;
+        }
+        event.deferReplyEphemeral().queue();
+
+        WakfuParty createdParty = new WakfuParty(event, event.getMember().getIdLong(), partyName, description, slots, level.orElse(-1));
+        event.getHook().editOriginal("Party created, now select your class")
+                .setComponents(ActionRow.of(
+                        StringSelectMenu.create("wakfu@party[" + createdParty.getName() + "].ownerPickClass")
+                                .setMaxValues(18)
+                                .addOptions(WakfuBreeds.getAsOption(event.getJDA()))
+                                .build()
+                ))
+                .queue();
+    }
+
+    @Slash.Sub
+    public void partyJoin(GuildSlashCommandEvent event,
+                          @Slash.Option(name = "party-name") String partyName) {
+    }
+
+    @Slash.Sub
+    public void partyLeave(GuildSlashCommandEvent event,
+                           @Slash.Option(name = "party-name") String partyName) {
+    }
+
+    @Slash.Sub
+    public void partyList(GuildSlashCommandEvent event) {
+    }
+
+    @Slash.Sub
+    public void partyEditSlot(GuildSlashCommandEvent event, @Slash.Option(name = "new-slot") @Slash.Option.Range(min = 1, max = 99) int slots) {
+        event.deferReplyEphemeral().queue();
+        WakfuParty.REGISTERED_PARTIES.stream().filter(p -> p.getOwnerId() == event.getMember().getIdLong()).findFirst().ifPresentOrElse(p -> {
+            p.setSlots(event.getJDA(), slots);
+            event.getHook().editOriginal("Party slots updated").queue();
+        }, () -> event.getHook().editOriginal("You are not the owner of any party").queue());
+    }
+
+    @Slash.Sub
+    public void partyDelete(GuildSlashCommandEvent event) {
+        event.deferReplyEphemeral().queue();
+        WakfuParty.REGISTERED_PARTIES.stream().filter(p -> p.getOwnerId() == event.getMember().getIdLong()).findFirst().ifPresentOrElse(p -> {
+            p.delete(event.getJDA()).queue(unused -> {
+                event.getHook().editOriginal("Party deleted").queue();
+            });
+        }, () -> event.getHook().editOriginal("You are not the owner of any party").queue());
+    }
+
+    @On(filter = @MethodTarget(method = "partyInteractionPredicate"))
+    public void partySelect(StringSelectInteractionEvent event) {
+        String name = event.getComponentId().substring(event.getComponentId().indexOf('[') + 1, event.getComponentId().indexOf(']'));
+        WakfuParty.REGISTERED_PARTIES.stream().filter(p -> p.getName().equals(name)).findFirst().ifPresent(p -> p.select(event));
+    }
+
+    @On(filter = @MethodTarget(method = "partyInteractionPredicate"))
+    public void partyButton(ButtonInteractionEvent event) {
+        String name = event.getComponentId().substring(event.getComponentId().indexOf('[') + 1, event.getComponentId().indexOf(']'));
+        WakfuParty.REGISTERED_PARTIES.stream().filter(p -> p.getName().equals(name)).findFirst().ifPresent(p -> p.button(event));
+    }
+
+    public boolean partyInteractionPredicate(GenericComponentInteractionCreateEvent event) {
+        return event.getComponentId().startsWith("wakfu@party");
+    }
+
+    // endregion
 
     // region Catch
     @Catch
