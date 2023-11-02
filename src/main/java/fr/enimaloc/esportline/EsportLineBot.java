@@ -43,11 +43,27 @@ public class EsportLineBot {
 
     public EsportLineBot(JDA jda) {
         this.jda = jda;
+        this.jda.addEventListener(new PaginationMessage.PaginationListener());
         this.dbDir.mkdirs();
+        Connection connection = null;
+        // region Game Commands related
+        Wakfu wakfu = new Wakfu(jda);
+
+        WakfuAdmin wakfuAdmin = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:sqlite:" + dbDir.getAbsolutePath() + "/wakfu-admin.db");
+            wakfuAdmin = new WakfuAdmin(jda, connection);
+        } catch (SQLException e) {
+            LOGGER.error("Failed to connect to wakfu-admin.db, disabling commands", e);
+            e.printStackTrace();
+        }
+        // endregion
         this.enutils = JDAEnutils.builder()
-                .setCommands(List.of())
-                .setContexts(List.of())
-                .setListeners(List.of())
+                .setJda(jda)
+                .setCommands(List.of(new GameCommand(wakfu, wakfuAdmin)
+                ))
+                .setContexts(List.of(new EventCreator("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")))
+                .setListeners(List.of(wakfu, wakfuAdmin))
                 .build();
 
         this.enutils.upsertAll(1038139412753694814L);
