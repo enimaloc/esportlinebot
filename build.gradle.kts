@@ -35,6 +35,8 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.0")
 
+    implementation("club.minnced:discord-webhooks:0.8.4")
+
     implementation("com.github.imcdonagh:image4j:0.7.2")
 
     implementation("com.theokanning.openai-gpt3-java:service:0.16.1")

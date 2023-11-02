@@ -61,6 +61,37 @@ public class EsportLineBot {
         this.enutils = JDAEnutils.builder()
                 .setJda(jda)
                 .setCommands(List.of(new GameCommand(wakfu, wakfuAdmin)
+                        , new Object() {
+                    @Slash
+                    public void clear(GuildSlashCommandEvent e, @Slash.Option int n) {
+                        e.replyEphemeral("Clearing " + n + " messages...").queue();
+                        e.getChannel().getIterableHistory().takeAsync(n).thenAcceptAsync(messages -> {
+                            e.getChannel().purgeMessages(messages);
+                            e.getHook().editOriginal("Cleared " + n + " messages!").queue();
+                        });
+                    }
+
+                    @Slash
+                    public void hookSay(GuildSlashCommandEvent event,
+                                        @Slash.Option Path message,
+                                        @Slash.Option String author,
+                                        @Slash.Option String avatarUrl,
+                                        @Slash.Option String originalMessageUrl) throws IOException {
+                        event.replyEphemeral("Sending message...").queue();
+                        TextChannel textChannel = event.getChannel()
+                                .asTextChannel();
+                        Webhook hookSay = textChannel.retrieveWebhooks()
+                                .complete()
+                                .stream()
+                                .filter(webhook -> webhook.getOwnerAsUser().getIdLong() == event.getJDA().getSelfUser().getIdLong())
+                                .findFirst()
+                                .orElseGet(() -> textChannel.createWebhook("hookSay").complete());
+                        hookSay.getManager().setAvatar(Icon.from(URI.create(avatarUrl).toURL().openStream())).setName(author).complete();
+                        WebhookClient client = JDAWebhookClient.from(hookSay);
+                        client.send("[Original message: <"+originalMessageUrl+">]\n"+Files.readString(message))
+                                .thenRun(() -> event.getHook().editOriginal("Message sent!").queue());
+                    }
+                }
                 ))
                 .setContexts(List.of(new EventCreator("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")))
                 .setListeners(List.of(wakfu, wakfuAdmin))
