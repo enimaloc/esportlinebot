@@ -5,10 +5,17 @@ plugins {
 group = "fr.enimaloc"
 version = "1.0-SNAPSHOT"
 
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
+
 repositories {
-    mavenCentral()
+    mavenCentral().content {
+        excludeModule("javax.media", "jai_core")
+    }
     maven(url = "https://m2.enimaloc.fr/snapshots")
     maven(url = "https://m2.enimaloc.fr/releases")
+    maven(url = "https://jitpack.io")
     mavenLocal()
 }
 
