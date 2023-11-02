@@ -62,7 +62,7 @@ public class EsportLineBot {
                 .setJda(jda)
                 .setCommands(List.of(new GameCommand(wakfu, wakfuAdmin)
                 ))
-                .setContexts(List.of(new EventCreator("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")))
+                .setContexts(List.of(new EventCreator(System.getenv("OPENAI_API_KEY")))) // Note for Git:The API key was regenerated
                 .setListeners(List.of(wakfu, wakfuAdmin))
                 .build();
 
