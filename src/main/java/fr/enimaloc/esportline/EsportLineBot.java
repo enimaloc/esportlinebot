@@ -9,7 +9,9 @@ import fr.enimaloc.esportline.commands.context.EventCreator;
 import fr.enimaloc.esportline.commands.slash.GameCommand;
 import fr.enimaloc.esportline.commands.slash.game.wakfu.Wakfu;
 import fr.enimaloc.esportline.commands.slash.game.wakfu.WakfuAdmin;
+import fr.enimaloc.esportline.runner.EventFromICal;
 import fr.enimaloc.esportline.utils.PaginationMessage;
+import fr.enimaloc.ical.ICal;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -19,6 +21,7 @@ import net.dv8tion.jda.api.entities.Webhook;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +36,10 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class EsportLineBot {
     public static final Logger LOGGER = LoggerFactory.getLogger(EsportLineBot.class);
@@ -40,6 +47,7 @@ public class EsportLineBot {
     private final JDA jda;
     private final JDAEnutils enutils;
     private final File dbDir = new File("data");
+    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     public EsportLineBot(JDA jda) {
         this.jda = jda;
@@ -97,13 +105,25 @@ public class EsportLineBot {
                 .setListeners(List.of(wakfu, wakfuAdmin))
                 .build();
 
+        for (String pair : System.getenv().getOrDefault("ICAL_EVENTS", "").split(";")) {
+            String[] pairSplit = pair.split("=", 2);
+            long guildId = Long.parseLong(pairSplit[0]);
+
+            for (String cal : pairSplit[1].split(",")) {
+                String[] calSplit = cal.split(Pattern.quote("|"), 2);
+                executorService.scheduleAtFixedRate(new EventFromICal(jda, guildId, new ICal(calSplit.length > 1 && calSplit[1].equals("public"), calSplit[0])), 0, 1, TimeUnit.MINUTES);
+            }
+        }
+
         this.enutils.upsertAll(1038139412753694814L);
     }
 
     public static void main(String[] args) throws InterruptedException {
         new EsportLineBot(JDABuilder.createDefault(System.getenv("DISCORD_TOKEN"),
                         GatewayIntent.MESSAGE_CONTENT,
-                        GatewayIntent.GUILD_EMOJIS_AND_STICKERS)
+                        GatewayIntent.GUILD_EMOJIS_AND_STICKERS,
+                        GatewayIntent.SCHEDULED_EVENTS)
+                .enableCache(CacheFlag.SCHEDULED_EVENTS)
                 .setStatus(OnlineStatus.DO_NOT_DISTURB)
                 .setActivity(Activity.customStatus("Initializing..."))
                 .build().awaitReady());
