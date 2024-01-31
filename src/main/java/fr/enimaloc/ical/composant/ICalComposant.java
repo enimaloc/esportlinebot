@@ -1,19 +1,14 @@
 package fr.enimaloc.ical.composant;
 
-import org.jetbrains.annotations.NotNull;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ICalComposant {
-    @NotNull
     private final String uid;
-    @NotNull
     private final Date created;
-    @NotNull
     private final Date lastModified;
-    @NotNull
     private final Date dtStamp;
 
     public ICalComposant(String uid, Date created, Date lastModified, Date dtStamp) {
@@ -40,22 +35,18 @@ public class ICalComposant {
         this.dtStamp = parseDate(entries.get("DTSTAMP"));
     }
 
-    @NotNull
     public String getUid() {
         return uid;
     }
 
-    @NotNull
     public Date getCreated() {
         return created;
     }
 
-    @NotNull
     public Date getLastModified() {
         return lastModified;
     }
 
-    @NotNull
     public Date getDtStamp() {
         return dtStamp;
     }

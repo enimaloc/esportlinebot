@@ -2,8 +2,6 @@ package fr.enimaloc.ical;
 
 import fr.enimaloc.ical.composant.ICalComposant;
 import fr.enimaloc.ical.composant.ICalEvent;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -12,15 +10,15 @@ import java.net.URLConnection;
 import java.util.*;
 
 public class ICal {
-    @NotNull
+    
     private final String icalUrl;
-    @NotNull
+    
     private String calScale;
-    @NotNull
+    
     private String prodId;
-    @Nullable
+    
     private String name;
-    @Nullable
+    
     private String timezone;
     private List<ICalComposant> cachedComposant;
 
@@ -31,27 +29,27 @@ public class ICal {
         this.icalUrl = icalUrl;
     }
 
-    @NotNull
+    
     public String getIcalUrl() {
         return icalUrl;
     }
 
-    @NotNull
+    
     public String getCalScale() {
         return calScale;
     }
 
-    @NotNull
+    
     public String getProdId() {
         return prodId;
     }
 
-    @Nullable
+    
     public String getName() {
         return name;
     }
 
-    @Nullable
+    
     public String getTimezone() {
         return timezone;
     }

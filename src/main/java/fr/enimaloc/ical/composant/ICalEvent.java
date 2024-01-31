@@ -1,29 +1,22 @@
 package fr.enimaloc.ical.composant;
 
 import fr.enimaloc.ical.Status;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 public class ICalEvent extends ICalComposant {
-    @NotNull
     private final Date start;
-    @Nullable
     private final Date end;
-    @NotNull
     private final String summary;
-    @Nullable
     private final String location;
-    @NotNull
+
     private final String[] categories;
-    @NotNull
+
     private final Status status;
-    @NotNull
+
     private final String description;
-    @NotNull
+
     private final boolean transparent;
-    @NotNull
     private final int sequence;
 
 
@@ -75,37 +68,35 @@ public class ICalEvent extends ICalComposant {
         this.sequence = Integer.parseInt(entries.get("SEQUENCE"));
     }
 
-    @NotNull
     public Date getStart() {
         return start;
     }
 
-    @Nullable
     public Date getEnd() {
         return end;
     }
 
-    @NotNull
+
     public String getSummary() {
         return summary;
     }
 
-    @NotNull
+
     public String getLocation() {
         return location;
     }
 
-    @NotNull
+
     public String[] getCategories() {
         return categories;
     }
 
-    @NotNull
+
     public Status getStatus() {
         return status;
     }
 
-    @NotNull
+
     public String getDescription() {
         return description;
     }
