@@ -7,6 +7,8 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.*;
 
 public class ICal {
@@ -21,11 +23,17 @@ public class ICal {
     
     private String timezone;
     private List<ICalComposant> cachedComposant;
+    private boolean publicDefault;
 
     public ICal(String icalUrl) {
+        this(false, icalUrl);
+    }
+
+    public ICal(boolean publicDefault, String icalUrl) {
         if (icalUrl == null || icalUrl.isBlank()) {
             throw new IllegalArgumentException("icalUrl cannot be null or empty");
         }
+        this.publicDefault = publicDefault;
         this.icalUrl = icalUrl;
     }
 
@@ -72,7 +80,7 @@ public class ICal {
                 StringBuilder composante = null;
                 StringBuilder calSpec = new StringBuilder();
                 StringBuilder activeBuilder = calSpec;
-                try (BufferedReader in = new BufferedReader(new InputStreamReader(httpConnection.getInputStream()))) {
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(httpConnection.getInputStream(), StandardCharsets.UTF_8))) {
                     String inputLine;
                     while ((inputLine = in.readLine()) != null) {
                         if (!inputLine.startsWith("BEGIN:VCALENDAR") && inputLine.startsWith("BEGIN:")) {
@@ -83,31 +91,38 @@ public class ICal {
                         if (!inputLine.startsWith("BEGIN:VCALENDAR") && inputLine.startsWith("END:") && composante != null) {
                             String[] lines = activeBuilder.toString().split("\n");
                             if (lines[0].equals("BEGIN:VEVENT")) {
-                                events.add(new ICalEvent(lines));
+                                if (timezone == null) {
+                                    processMetaIcal(calSpec.toString().split("\n"));
+                                }
+                                events.add(new ICalEvent(publicDefault, timezone != null ? ZoneId.of(timezone) : ZoneId.systemDefault(), lines));
                             }
                             composante = null;
                             activeBuilder = calSpec;
                         }
                     }
                 }
-                Map<String, String> entries = new HashMap<>();
-                for (String line : calSpec.toString().split("\n")) {
-                    String[] parts = line.split("[:;]", 2);
-                    String key = parts[0];
-                    if (key.equals("BEGIN") || key.equals("END")) {
-                        continue;
-                    }
-                    String value = parts[1];
-                    entries.put(key, value);
-                }
-                this.calScale = entries.get("CALSCALE");
-                this.prodId = entries.get("PRODID");
-                this.name = entries.getOrDefault("X-WR-CALNAME", "Unknown");
-                this.timezone = entries.getOrDefault("X-WR-TIMEZONE", "Unknown");
+                processMetaIcal(calSpec.toString().split("\n"));
             }
         }
         cachedComposant = events;
         return events;
+    }
+
+    private void processMetaIcal(String... lines) {
+        Map<String, String> entries = new HashMap<>();
+        for (String line : lines) {
+            String[] parts = line.split("[:;]", 2);
+            String key = parts[0];
+            if (key.equals("BEGIN") || key.equals("END")) {
+                continue;
+            }
+            String value = parts[1];
+            entries.put(key, value);
+        }
+        this.calScale = entries.getOrDefault("CALSCALE", "UTC");
+        this.prodId = entries.get("PRODID");
+        this.name = entries.getOrDefault("X-WR-CALNAME", "Unknown");
+        this.timezone = entries.get("X-WR-TIMEZONE");
     }
 
     @Override
