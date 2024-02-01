@@ -11,5 +11,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      - name: Make Gradlew executable
+        run: chmod +x gradlew
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v3
