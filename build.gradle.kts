@@ -37,7 +37,7 @@ dependencies {
 
     implementation("com.github.imcdonagh:image4j:0.7.2")
 
-    implementation("com.theokanning.openai-gpt3-java:service:0.16.1")
+    implementation("com.theokanning.openai-gpt3-java:service:0.18.2")
     implementation("org.apache.commons:commons-text:1.10.0")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
