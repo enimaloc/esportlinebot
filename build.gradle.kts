@@ -24,7 +24,7 @@ dependencies {
     implementation("net.dv8tion:JDA:5.0.0-beta.20")
     implementation("fr.enimaloc:jda-enutils:0.4.1")
     implementation("org.slf4j:slf4j-simple:2.0.5")
-    implementation("commons-io:commons-io:2.11.0")
+    implementation("commons-io:commons-io:2.15.1")
     implementation("fr.enimaloc.night-config:toml:3.7.0")
     implementation("org.xerial:sqlite-jdbc:3.45.1.0")
     implementation("fr.enimaloc:matcher:0.1.5")
