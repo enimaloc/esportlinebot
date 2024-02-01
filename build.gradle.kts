@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("org.sonarqube") version "4.4.1.3373"
 }
 
 group = "fr.enimaloc"
@@ -46,4 +47,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "enimaloc_esportlinebot_AY1iZ023Y2D0l8qiaVBd")
+    }
 }
