@@ -26,7 +26,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.5")
     implementation("commons-io:commons-io:2.11.0")
     implementation("fr.enimaloc.night-config:toml:3.7.0")
-    implementation("org.xerial:sqlite-jdbc:3.41.0.1")
+    implementation("org.xerial:sqlite-jdbc:3.41.2.2")
     implementation("fr.enimaloc:matcher:0.1.5")
     implementation("com.fasterxml.jackson.core:jackson-core:2.13.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.13.0")
