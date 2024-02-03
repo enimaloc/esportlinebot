@@ -717,25 +717,50 @@ public class SmashBros {
     public static void main(String[] args) throws SQLException {
         SmashBros smash = new SmashBros();
         try {
-            List<SmashPlayer> utimatePlayers = smash.getPlayers(SmashGame.ULTIMATE);
-            List<SmashPlayer> smashPlayers = smash.getPlayers(SmashGame.MELEE);
-            List<SmashTournament> ultimateTournaments = smash.getTournaments(SmashGame.ULTIMATE);
-            List<SmashTournament> meleeTournaments = smash.getTournaments(SmashGame.MELEE);
-            System.out.println("utimatePlayers[size]: " + utimatePlayers.size());
-            System.out.println("smashPlayers[size]: " + smashPlayers.size());
-            System.out.println("ultimateTournaments[size]: " + ultimateTournaments.size());
-            System.out.println("meleeTournaments[size]: " + meleeTournaments.size());
-//        smash.getPlayers(SmashGame.ULTIMATE).stream().filter(smashPlayer -> Arrays.stream(smashPlayer.prefixes()).anyMatch(s -> s.equals("eLine"))).forEach(System.out::println);
-            SmashTournament tournament = smash.getTournaments(SmashGame.ULTIMATE).stream().filter(smashTournament -> smashTournament.key().contains("esport-line")).findFirst().orElseThrow();
-            System.out.println(tournament);
-            HashMap<SmashPlayer, Integer> players = new HashMap<>();
-            for (SmashTournament.Placing placing1 : tournament.placings()) {
-                players.put(placing1.getPlayer(), placing1.placings());
+//            System.out.println("ultimatePlayers[size]: " + smash.getPlayers(SmashGame.ULTIMATE).size());
+//            System.out.println("smashPlayers[size]: " + smash.getPlayers(SmashGame.MELEE).size());
+//            System.out.println("ultimateTournaments[size]: " + smash.getTournaments(SmashGame.ULTIMATE).size());
+//            System.out.println("meleeTournaments[size]: " + smash.getTournaments(SmashGame.MELEE).size());
+//            System.out.println("ultimateSets[size]: " + smash.getSets(SmashGame.ULTIMATE).size());
+//            System.out.println("meleeSets[size]: " + smash.getSets(SmashGame.MELEE).size());
+//            smash.getPlayers(SmashGame.ULTIMATE).stream().filter(smashPlayer -> Arrays.stream(smashPlayer.prefixes()).anyMatch(s -> s.equals("eLine"))).forEach(System.out::println);
+//            SmashTournament tournament = smash.getTournaments(SmashGame.ULTIMATE).stream().filter(smashTournament -> smashTournament.key().contains("esport-line")).findFirst().orElseThrow();
+//            System.out.println(tournament);
+//            tournament.getSets().forEach(System.out::println);
+//            System.out.println(tournament.cleanedName());
+//            for (SmashSets set : tournament.getSets()) {
+//                System.out.println("- " + set.locationNames()[2]);
+//                System.out.println(" - " + set.getPlayer1().tag() + " vs " + set.getPlayer2().tag());
+//                System.out.println(" - " + set.player1Score() + " - " + set.player2Score());
+//                System.out.println(" - Games:");
+//                for (SmashSets.GameData gameData : set.gameData()) {
+//                    System.out.println("  - " + gameData.winnerCharacter() + " vs " + gameData.loserCharacter() + (gameData.stage() == null ? "" : " on " + gameData.stage()));
+//                }
+//                System.out.println("-- " + set.);
+//            }
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+            System.out.println("Player ID:");
+            String input = scanner.nextLine();
+            SmashPlayer player = smash.getPlayer(SmashGame.ULTIMATE, input);
+            System.out.printf("============== %s ==============%n", player.tag());
+            System.out.printf("- Location: %s, %s, %s%n", player.location().effectiveCity(), player.location().effectiveState(), player.location().effectiveCountry());
+            System.out.printf("- Socials: %s%n", Arrays.toString(player.social()));
+            System.out.printf("- Characters: (%d)%n", player.characters().length);
+            int sum = Arrays.stream(player.characters()).mapToInt(SmashPlayer.Character::usage).sum();
+            for (SmashPlayer.Character character : player.characters()) {
+                System.out.printf(" - %s: %d (%.2f%%)%n", character.name(), character.usage(), (float) character.usage() / sum * 100);
             }
-            List<Map.Entry<SmashPlayer, Integer>> list = new ArrayList<>(players.entrySet());
-            list.sort(Map.Entry.comparingByValue());
-            for (Map.Entry<SmashPlayer, Integer> placing : list) {
-                System.out.println(placing.getValue() + " => " + Arrays.toString(placing.getKey().prefixes()) + " " + placing.getKey().tag());
+            System.out.printf("- Tournaments: (%d)%n", player.getTournaments().size());
+            for (SmashPlayer.Placings placing : player.placings()) {
+                System.out.printf(" - %s: placing = %d; seed = %d, DQ = %b%n", placing.getTournament().cleanedName(), placing.placing(), placing.seed(), placing.dq());
+                for (SmashSets set : placing.getSets()) {
+                    System.out.printf("  - %s: %s%n", set.locationNames()[2], set.getWinner().equals(player) ? "Win" : "Lose");
+                    for (SmashSets.GameData gameData : set.gameData()) {
+                        System.out.printf("   - %s vs %s%s%n", gameData.winnerCharacter(), gameData.loserCharacter(), gameData.stage() == null ? "" : " on " + gameData.stage());
+                    }
+                }
+            }
             }
         } catch (IOException e) {
             if (e.getMessage().contains("403")) {
