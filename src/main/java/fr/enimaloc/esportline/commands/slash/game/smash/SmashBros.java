@@ -34,6 +34,7 @@ public class SmashBros {
     private File smashData = new File("data/smash");
     private Map<SmashGame, List<SmashPlayer>> cachePlayers = new HashMap<>();
     private Map<SmashGame, List<SmashTournament>> cacheTournaments = new HashMap<>();
+    private Map<SmashGame, List<SmashSets>> cacheSets = new HashMap<>();
 
     private File getData(SmashGame game) throws IOException {
         if (!smashData.exists()) {
@@ -342,6 +343,283 @@ public class SmashBros {
         cacheTournaments.put(game, tournaments);
         LOGGER.debug("Got {} tournaments of {} in {}ms", tournaments.size(), game, end - start);
         return tournaments;
+    }
+
+    public List<SmashSets> getSets(SmashGame game) throws SQLException, IOException {
+        LOGGER.debug("Getting sets of {}", game);
+        if (cacheSets.containsKey(game)) {
+            LOGGER.debug("Sets of {} already cached, returning", game);
+            return cacheSets.get(game);
+        }
+        Connection connection = getConnection(game);
+        LOGGER.trace("Executing query \"SELECT * FROM sets\" on {}", connection);
+        List<SmashSets> sets = new ArrayList<>();
+        ObjectMapper mapper = new JsonMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        long start = System.currentTimeMillis();
+        ResultSet set = connection.createStatement().executeQuery("SELECT * FROM sets");
+        while (set.next()) {
+            if ((LOG_DETAILS_LEVEL & 0x10) == 0x10) {
+                LOGGER.trace("Building sets {}", set.getString("key"));
+            }
+            String key = set.getString("key");
+            String tournamentKey = set.getString("tournament_key");
+            String winnerId = set.getString("winner_id");
+            String player1Id = set.getString("p1_id");
+            String player2Id = set.getString("p2_id");
+            int player1Score = set.getInt("p1_score");
+            int player2Score = set.getInt("p2_score");
+            // region LocationNames
+            JsonNode locationNamesNode = mapper.readTree(set.getString("location_names"));
+            String[] locationNames = new String[locationNamesNode.size()];
+            for (int i = 0; i < locationNamesNode.size(); i++) {
+                locationNames[i] = locationNamesNode.get(i).asText();
+            }
+            // endregion
+            String bracketName = set.getString("bracket_name");
+            String bracketOrder = set.getString("bracket_order");
+            String setOrder = set.getString("set_order");
+            int bestOf = set.getInt("best_of");
+            String gameData = set.getString("game_data");
+            SmashSets smashSets = new SmashSets(this,
+                    game,
+                    key,
+                    tournamentKey,
+                    winnerId,
+                    player1Id,
+                    player2Id,
+                    player1Score,
+                    player2Score,
+                    locationNames,
+                    bracketName,
+                    bracketOrder,
+                    setOrder,
+                    bestOf,
+                    mapper.readValue(gameData, SmashSets.GameData[].class));
+            if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
+                LOGGER.trace("Sets {} built", key);
+            } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
+                LOGGER.trace("Sets {} built => {}", key, smashSets.toString().substring(0, 70) + "...");
+            } else if ((LOG_DETAILS_LEVEL & 0x3) == 0x3) {
+                LOGGER.trace("Sets {} built => {}", key, smashSets);
+            }
+            sets.add(smashSets);
+        }
+        long end = System.currentTimeMillis();
+        cacheSets.put(game, sets);
+        LOGGER.debug("Got {} sets of {} in {}ms", sets.size(), game, end - start);
+        return sets;
+    }
+
+    public List<SmashSets> getSetsForTournament(SmashGame game, String tournamentKey) throws SQLException, IOException {
+        LOGGER.debug("Getting sets of {} for tournament {}", game, tournamentKey);
+        if (cacheSets.containsKey(game)) {
+            LOGGER.debug("Sets of {} already cached, searching {} among us", game, tournamentKey);
+            List<SmashSets> sets = cacheSets.get(game).stream().filter(smashSets -> smashSets.tournamentKey().equals(tournamentKey)).toList();
+            if (sets.isEmpty()) {
+                LOGGER.debug("Sets of {} for tournament {} not found among us, invalidating sets and recall", game, tournamentKey);
+                invalidateSets(game);
+                return getSetsForTournament(game, tournamentKey);
+            }
+            return sets;
+        }
+        Connection connection = getConnection(game);
+        LOGGER.trace("Executing query \"SELECT * FROM sets WHERE tournament_key = '{}'\" on {}", tournamentKey, connection);
+        List<SmashSets> sets = new ArrayList<>();
+        ObjectMapper mapper = new JsonMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        long start = System.currentTimeMillis();
+        try (ResultSet set = connection.createStatement().executeQuery("SELECT * FROM sets WHERE tournament_key = '" + tournamentKey + "'")) {
+            while (set.next()) {
+                if ((LOG_DETAILS_LEVEL & 0x10) == 0x10) {
+                    LOGGER.trace("Building sets {}", set.getString("key"));
+                }
+                String key = set.getString("key");
+                String winnerId = set.getString("winner_id");
+                String player1Id = set.getString("p1_id");
+                String player2Id = set.getString("p2_id");
+                int player1Score = set.getInt("p1_score");
+                int player2Score = set.getInt("p2_score");
+                // region LocationNames
+                JsonNode locationNamesNode = mapper.readTree(set.getString("location_names"));
+                String[] locationNames = new String[locationNamesNode.size()];
+                for (int i = 0; i < locationNamesNode.size(); i++) {
+                    locationNames[i] = locationNamesNode.get(i).asText();
+                }
+                // endregion
+                String bracketName = set.getString("bracket_name");
+                String bracketOrder = set.getString("bracket_order");
+                String setOrder = set.getString("set_order");
+                int bestOf = set.getInt("best_of");
+                String gameData = set.getString("game_data");
+                SmashSets smashSets = new SmashSets(this,
+                        game,
+                        key,
+                        tournamentKey,
+                        winnerId,
+                        player1Id,
+                        player2Id,
+                        player1Score,
+                        player2Score,
+                        locationNames,
+                        bracketName,
+                        bracketOrder,
+                        setOrder,
+                        bestOf,
+                        mapper.readValue(gameData, SmashSets.GameData[].class));
+                if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
+                    LOGGER.trace("Sets {} built", key);
+                } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
+                    LOGGER.trace("Sets {} built => {}", key, smashSets.toString().substring(0, 70) + "...");
+                } else if ((LOG_DETAILS_LEVEL & 0x3) == 0x3) {
+                    LOGGER.trace("Sets {} built => {}", key, smashSets);
+                }
+                sets.add(smashSets);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Error while getting sets of {} for tournament {}", game, tournamentKey, e);
+        }
+        long end = System.currentTimeMillis();
+        LOGGER.debug("Got {} sets of {} for tournament {} in {}ms", sets.size(), game, tournamentKey, end - start);
+        return sets;
+    }
+
+    public List<SmashSets> getSetsForTournamentAndPlayer(SmashGame game, String tournamentKey, String playerId) throws SQLException, IOException {
+        LOGGER.debug("Getting sets of {} for tournament {} and player {}", game, tournamentKey, playerId);
+        if (cacheSets.containsKey(game)) {
+            LOGGER.debug("Sets of {} already cached, searching {} among us", game, tournamentKey);
+            List<SmashSets> sets = cacheSets.get(game).stream().filter(smashSets -> smashSets.tournamentKey().equals(tournamentKey) && (smashSets.player1Id().equals(playerId) || smashSets.player2Id().equals(playerId))).toList();
+            if (sets.isEmpty()) {
+                LOGGER.debug("Sets of {} for tournament {} and player {} not found among us, invalidating sets and recall", game, tournamentKey, playerId);
+                invalidateSets(game);
+                return getSetsForTournamentAndPlayer(game, tournamentKey, playerId);
+            }
+            return sets;
+        }
+        Connection connection = getConnection(game);
+        LOGGER.trace("Executing query \"SELECT * FROM sets WHERE tournament_key = '{}' AND (p1_id = '{}' OR p2_id = '{}')\" on {}", tournamentKey, playerId, playerId, connection);
+        List<SmashSets> sets = new ArrayList<>();
+        ObjectMapper mapper = new JsonMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        long start = System.currentTimeMillis();
+        try (ResultSet set = connection.createStatement().executeQuery("SELECT * FROM sets WHERE tournament_key = '" + tournamentKey + "' AND (p1_id = '" + playerId + "' OR p2_id = '" + playerId + "')")) {
+            while (set.next()) {
+                if ((LOG_DETAILS_LEVEL & 0x10) == 0x10) {
+                    LOGGER.trace("Building sets {}", set.getString("key"));
+                }
+                String key = set.getString("key");
+                String winnerId = set.getString("winner_id");
+                String player1Id = set.getString("p1_id");
+                String player2Id = set.getString("p2_id");
+                int player1Score = set.getInt("p1_score");
+                int player2Score = set.getInt("p2_score");
+                // region LocationNames
+                JsonNode locationNamesNode = mapper.readTree(set.getString("location_names"));
+                String[] locationNames = new String[locationNamesNode.size()];
+                for (int i = 0; i < locationNamesNode.size(); i++) {
+                    locationNames[i] = locationNamesNode.get(i).asText();
+                }
+                // endregion
+                String bracketName = set.getString("bracket_name");
+                String bracketOrder = set.getString("bracket_order");
+                String setOrder = set.getString("set_order");
+                int bestOf = set.getInt("best_of");
+                String gameData = set.getString("game_data");
+                SmashSets smashSets = new SmashSets(this,
+                        game,
+                        key,
+                        tournamentKey,
+                        winnerId,
+                        player1Id,
+                        player2Id,
+                        player1Score,
+                        player2Score,
+                        locationNames,
+                        bracketName,
+                        bracketOrder,
+                        setOrder,
+                        bestOf,
+                        mapper.readValue(gameData, SmashSets.GameData[].class));
+                if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
+                    LOGGER.trace("Sets {} built", key);
+                } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
+                    LOGGER.trace("Sets {} built => {}", key, smashSets.toString().substring(0, 70) + "...");
+                } else if ((LOG_DETAILS_LEVEL & 0x3) == 0x3) {
+                    LOGGER.trace("Sets {} built => {}", key, smashSets);
+                }
+                sets.add(smashSets);
+            }
+        }
+        long end = System.currentTimeMillis();
+        LOGGER.debug("Got {} sets of {} for tournament {} and player {} in {}ms", sets.size(), game, tournamentKey, playerId, end - start);
+        return sets;
+    }
+
+    public List<SmashSets> getSetsForPlayer(SmashGame game, String playerId) throws SQLException, IOException {
+        LOGGER.debug("Getting sets of {} for player {}", game, playerId);
+        if (cacheSets.containsKey(game)) {
+            LOGGER.debug("Sets of {} already cached, searching {} among us", game, playerId);
+            List<SmashSets> sets = cacheSets.get(game).stream().filter(smashSets -> smashSets.player1Id().equals(playerId) || smashSets.player2Id().equals(playerId)).toList();
+            if (sets.isEmpty()) {
+                LOGGER.debug("Sets of {} for player {} not found among us, invalidating sets and recall", game, playerId);
+                invalidateSets(game);
+                return getSetsForPlayer(game, playerId);
+            }
+            return sets;
+        }
+        Connection connection = getConnection(game);
+        LOGGER.trace("Executing query \"SELECT * FROM sets WHERE p1_id = '{}' OR p2_id = '{}'\" on {}", playerId, playerId, connection);
+        List<SmashSets> sets = new ArrayList<>();
+        ObjectMapper mapper = new JsonMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        long start = System.currentTimeMillis();
+        ResultSet result = connection.createStatement().executeQuery("SELECT * FROM sets WHERE p1_id = '" + playerId + "' OR p2_id = '" + playerId + "'");
+        while (result.next()) {
+            if ((LOG_DETAILS_LEVEL & 0x10) == 0x10) {
+                LOGGER.trace("Building sets {}", result.getString("key"));
+            }
+            String key = result.getString("key");
+            String tournamentKey = result.getString("tournament_key");
+            String winnerId = result.getString("winner_id");
+            String player1Id = result.getString("p1_id");
+            String player2Id = result.getString("p2_id");
+            int player1Score = result.getInt("p1_score");
+            int player2Score = result.getInt("p2_score");
+            // region LocationNames
+            JsonNode locationNamesNode = mapper.readTree(result.getString("location_names"));
+            String[] locationNames = new String[locationNamesNode.size()];
+            for (int i = 0; i < locationNamesNode.size(); i++) {
+                locationNames[i] = locationNamesNode.get(i).asText();
+            }
+            // endregion
+            String bracketName = result.getString("bracket_name");
+            String bracketOrder = result.getString("bracket_order");
+            String setOrder = result.getString("set_order");
+            int bestOf = result.getInt("best_of");
+            String gameData = result.getString("game_data");
+            SmashSets smashSets = new SmashSets(this,
+                    game,
+                    key,
+                    tournamentKey,
+                    winnerId,
+                    player1Id,
+                    player2Id,
+                    player1Score,
+                    player2Score,
+                    locationNames,
+                    bracketName,
+                    bracketOrder,
+                    setOrder,
+                    bestOf,
+                    mapper.readValue(gameData, SmashSets.GameData[].class));
+            if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
+                LOGGER.trace("Sets {} built", key);
+            } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
+                LOGGER.trace("Sets {} built => {}", key, smashSets.toString().substring(0, 70) + "...");
+            } else if ((LOG_DETAILS_LEVEL & 0x3) == 0x3) {
+                LOGGER.trace("Sets {} built => {}", key, smashSets);
+            }
+            sets.add(smashSets);
+        }
+        long end = System.currentTimeMillis();
+        LOGGER.debug("Got {} sets of {} for player {} in {}ms", sets.size(), game, playerId, end - start);
+        return sets;
     }
 
     public void invalidatePlayer(SmashGame game) {
