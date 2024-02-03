@@ -1,4 +1,4 @@
-package fr.enimaloc.esportline.commands.slash.game.smash;
+package fr.enimaloc.esportline.api.smash;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 

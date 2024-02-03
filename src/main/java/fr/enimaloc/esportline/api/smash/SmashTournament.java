@@ -1,4 +1,4 @@
-package fr.enimaloc.esportline.commands.slash.game.smash;
+package fr.enimaloc.esportline.api.smash;
 
 import java.io.IOException;
 import java.sql.SQLException;
