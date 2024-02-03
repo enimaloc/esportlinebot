@@ -148,7 +148,7 @@ public class SmashBros {
             JsonNode placingsNode = mapper.readTree(set.getString("placings"));
             List<SmashPlayer.Placings> placingsList = new ArrayList<>();
             for (JsonNode jsonNode : placingsNode) {
-                placingsList.add(new SmashPlayer.Placings(jsonNode));
+                placingsList.add(new SmashPlayer.Placings(this, game, playerId, jsonNode));
             }
             SmashPlayer.Placings[] placings = placingsList.toArray(SmashPlayer.Placings[]::new);
             // endregion
@@ -162,7 +162,7 @@ public class SmashBros {
             SmashPlayer.Character[] characters = charactersList.toArray(SmashPlayer.Character[]::new);
             // endregion
             String alias = set.getString("alias");
-            SmashPlayer player = new SmashPlayer(game, playerId, tag, allTags, prefixes, socials, location, placings, characters, alias);
+            SmashPlayer player = new SmashPlayer(this, game, playerId, tag, allTags, prefixes, socials, location, placings, characters, alias);
             if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
                 LOGGER.trace("Player {} built", playerId);
             } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
@@ -249,7 +249,7 @@ public class SmashBros {
             JsonNode placingsNode = mapper.readTree(set.getString("placings"));
             List<SmashPlayer.Placings> placingsList = new ArrayList<>();
             for (JsonNode jsonNode : placingsNode) {
-                placingsList.add(new SmashPlayer.Placings(jsonNode));
+                placingsList.add(new SmashPlayer.Placings(this, game, playerId, jsonNode));
             }
             SmashPlayer.Placings[] placings = placingsList.toArray(SmashPlayer.Placings[]::new);
             // endregion
@@ -263,7 +263,7 @@ public class SmashBros {
             SmashPlayer.Character[] characters = charactersList.toArray(SmashPlayer.Character[]::new);
             // endregion
             String alias = set.getString("alias");
-            player = new SmashPlayer(game, playerId, pTag, allTags, prefixes, socials, location, placings, characters, alias);
+            player = new SmashPlayer(this, game, playerId, pTag, allTags, prefixes, socials, location, placings, characters, alias);
             if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
                 LOGGER.trace("Player {} built", playerId);
             } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
@@ -324,7 +324,7 @@ public class SmashBros {
             float lng = set.getFloat("lng");
             GPSLocation gpsLocation = new GPSLocation(lat, lng);
             // endregion
-            SmashTournament tournament = new SmashTournament(game, key, cleanedName, source, tournamentName, tournamentEvent, season, rank, startT, endT, location, entrants, placings, losses, bracketTypes, online, gpsLocation);
+            SmashTournament tournament = new SmashTournament(this, game, key, cleanedName, source, tournamentName, tournamentEvent, season, rank, startT, endT, location, entrants, placings, losses, bracketTypes, online, gpsLocation);
             if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
                 LOGGER.trace("Tournaments {} built", key);
             } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {

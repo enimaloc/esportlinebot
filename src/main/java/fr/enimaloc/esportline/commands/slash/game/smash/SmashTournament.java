@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 
 public record SmashTournament(
+        SmashBros origin,
         SmashBros.SmashGame game,
         String key,
         String cleanedName,

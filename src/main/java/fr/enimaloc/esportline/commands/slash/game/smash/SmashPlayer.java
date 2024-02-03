@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Arrays;
 
 public record SmashPlayer(
+        SmashBros origin,
         SmashBros.SmashGame game,
         int playerId,
         String tag,
@@ -44,13 +45,14 @@ public record SmashPlayer(
         }
     }
 
-    public record Placings(String key, int placing, int seed, boolean dq) {
-        public Placings(String json) throws JsonProcessingException {
-            this(new JsonMapper().readTree(json));
+    public record Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, String key, int placing, int seed, boolean dq) {
+        public Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, String json) throws JsonProcessingException {
+            this(origin, game, playerId, new JsonMapper().readTree(json));
         }
 
-        public Placings(JsonNode json) {
-            this(json.get("key").asText(), json.get("placing").asInt(), json.get("seed").asInt(), json.get("dq").asBoolean());
+        public Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, JsonNode json) {
+            this(origin, game, playerId, json.get("key").asText(), json.get("placing").asInt(), json.get("seed").asInt(), json.get("dq").asBoolean());
+        }
         }
     }
 
