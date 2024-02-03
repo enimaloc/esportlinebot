@@ -31,7 +31,7 @@ dependencies {
     implementation("fr.enimaloc:matcher:0.1.5")
     implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.0")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.16.1")
 
     implementation("club.minnced:discord-webhooks:0.8.4")
