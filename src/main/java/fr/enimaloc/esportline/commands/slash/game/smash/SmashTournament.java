@@ -2,6 +2,7 @@ package fr.enimaloc.esportline.commands.slash.game.smash;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.List;
 
 public record SmashTournament(
         SmashBros origin,
@@ -27,5 +28,9 @@ public record SmashTournament(
         public SmashPlayer getPlayer() throws SQLException, IOException {
             return origin.getPlayer(game, playerId);
         }
+    }
+
+    public List<SmashSets> getSets() throws SQLException, IOException {
+        return origin.getSetsForTournament(game, key);
     }
 }

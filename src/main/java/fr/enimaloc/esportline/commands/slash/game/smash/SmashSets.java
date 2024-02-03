@@ -22,6 +22,29 @@ public record SmashSets(
         int bestOf,
         GameData[] gameData
 ) {
+    public SmashTournament getTournament() throws SQLException, IOException {
+        return origin.getTournament(game, tournamentKey);
+    }
+
+    public SmashPlayer getWinner() throws SQLException, IOException {
+        return origin.getPlayer(game, winnerId);
+    }
+
+    public SmashPlayer getPlayer1() throws SQLException, IOException {
+        return origin.getPlayer(game, player1Id);
+    }
+
+    public SmashPlayer getPlayer2() throws SQLException, IOException {
+        return origin.getPlayer(game, player2Id);
+    }
+
+    public SmashPlayer getLooser() throws SQLException, IOException {
+        if (player1Score > player2Score) {
+            return getPlayer2();
+        } else {
+            return getPlayer1();
+        }
+    }
 
     public record GameData(
             @JsonAlias("winner_id") int winnerId,

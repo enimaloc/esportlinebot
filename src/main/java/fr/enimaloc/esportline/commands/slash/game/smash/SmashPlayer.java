@@ -4,7 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public record SmashPlayer(
         SmashBros origin,
@@ -68,9 +72,28 @@ public record SmashPlayer(
         public Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, JsonNode json) {
             this(origin, game, playerId, json.get("key").asText(), json.get("placing").asInt(), json.get("seed").asInt(), json.get("dq").asBoolean());
         }
+
+        public SmashTournament getTournament() throws SQLException, IOException {
+            return origin.getTournament(game, key);
+        }
+
+        public List<SmashSets> getSets() throws SQLException, IOException {
+            return origin.getSetsForTournamentAndPlayer(game, key, String.valueOf(playerId));
         }
     }
 
     public record Character(String name, int usage) {
+    }
+
+    public List<SmashTournament> getTournaments() throws SQLException, IOException {
+        List<SmashTournament> tournaments = new ArrayList<>();
+        for (Placings placing : placings) {
+            tournaments.add(origin.getTournament(game, placing.key()));
+        }
+        return tournaments;
+    }
+
+    public List<SmashSets> getSets() throws SQLException, IOException {
+        return origin.getSetsForPlayer(game, String.valueOf(playerId));
     }
 }
