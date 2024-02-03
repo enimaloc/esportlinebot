@@ -345,6 +345,76 @@ public class SmashBros {
         return tournaments;
     }
 
+    public SmashTournament getTournament(SmashGame game, String key) throws SQLException, IOException {
+        LOGGER.debug("Getting tournament {} of {}", key, game);
+        if (cacheTournaments.containsKey(game)) {
+            LOGGER.debug("Tournaments of {} already cached, searching {} among us", game, key);
+            return cacheTournaments.get(game).stream().filter(smashTournament -> smashTournament.key().equals(key)).findFirst().orElseGet(() -> {
+                LOGGER.debug("Tournament {} not found among us, invalidating tournaments and recall", key);
+                invalidateTournament(game);
+                try {
+                    return getTournament(game, key);
+                } catch (SQLException | IOException e) {
+                    LOGGER.error("Error while getting tournament {} of {}", key, game, e);
+                    return null;
+                }
+            });
+        }
+        Connection connection = getConnection(game);
+        LOGGER.trace("Executing query \"SELECT * FROM tournament_info WHERE key = '{}'\" on {}", key, connection);
+        ObjectMapper mapper = new JsonMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        SmashTournament tournament = null;
+        long start = System.currentTimeMillis();
+        ResultSet set = connection.createStatement().executeQuery("SELECT * FROM tournament_info WHERE key = '" + key + "'");
+        while (set.next()) {
+            if ((LOG_DETAILS_LEVEL & 0x10) == 0x10) {
+                LOGGER.trace("Building tournaments {}", set.getString("key"));
+            }
+            String tKey = set.getString("key");
+            String cleanedName = set.getString("cleaned_name");
+            String source = set.getString("source");
+            String tournamentName = set.getString("tournament_name");
+            String tournamentEvent = set.getString("tournament_event");
+            int season = set.getInt("season");
+            char rank = set.getString("rank").isBlank() ? ' ' : set.getString("rank").charAt(0);
+            long startT = set.getLong("start");
+            long endT = set.getLong("end");
+            // region Location
+            String country = set.getString("country");
+            String state = set.getString("state");
+            String city = set.getString("city");
+            Location location = new Location(country, state, city, null, null, null);
+            // endregion
+            int entrants = set.getInt("entrants");
+            // region Placings
+            JsonNode placingsNode = mapper.readTree(set.getString("placings"));
+            List<SmashTournament.Placing> placingsList = new ArrayList<>();
+            for (JsonNode jsonNode : placingsNode) {
+                placingsList.add(new SmashTournament.Placing(this, game, jsonNode.get(0).asText(), jsonNode.get(1).asInt()));
+            }
+            SmashTournament.Placing[] placings = placingsList.toArray(SmashTournament.Placing[]::new);
+            String losses = set.getString("losses");
+            String bracketTypes = set.getString("bracket_types");
+            boolean online = set.getBoolean("online");
+            // region GPSLocation
+            float lat = set.getFloat("lat");
+            float lng = set.getFloat("lng");
+            GPSLocation gpsLocation = new GPSLocation(lat, lng);
+            // endregion
+            tournament = new SmashTournament(this, game, tKey, cleanedName, source, tournamentName, tournamentEvent, season, rank, startT, endT, location, entrants, placings, losses, bracketTypes, online, gpsLocation);
+            if ((LOG_DETAILS_LEVEL & 0x1) == 0x1) {
+                LOGGER.trace("Tournaments {} built", tKey);
+            } else if ((LOG_DETAILS_LEVEL & 0x2) == 0x2) {
+                LOGGER.trace("Tournaments {} built => {}", tKey, tournament.toString().substring(0, 70) + "...");
+            } else if ((LOG_DETAILS_LEVEL & 0x3) == 0x3) {
+                LOGGER.trace("Tournaments {} built => {}", tKey, tournament);
+            }
+        }
+        long end = System.currentTimeMillis();
+        LOGGER.debug("Got tournament {} of {} in {}ms", tournament.key(), game, end - start);
+        return tournament;
+    }
+
     public List<SmashSets> getSets(SmashGame game) throws SQLException, IOException {
         LOGGER.debug("Getting sets of {}", game);
         if (cacheSets.containsKey(game)) {
