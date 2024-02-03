@@ -697,6 +697,23 @@ public class SmashBros {
         cachePlayers.remove(game);
     }
 
+    public void invalidateTournament(SmashGame game) {
+        LOGGER.debug("Invalidating tournaments of {}", game);
+        cacheTournaments.remove(game);
+    }
+
+    public void invalidateSets(SmashGame game) {
+        LOGGER.debug("Invalidating sets of {}", game);
+        cacheSets.remove(game);
+    }
+
+    public void invalidateAll(SmashGame game) {
+        LOGGER.debug("Invalidating all of {}", game);
+        invalidatePlayer(game);
+        invalidateTournament(game);
+        invalidateSets(game);
+    }
+
     public static void main(String[] args) throws SQLException {
         SmashBros smash = new SmashBros();
         try {
