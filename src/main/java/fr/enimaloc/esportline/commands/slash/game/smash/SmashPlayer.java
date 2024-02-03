@@ -21,6 +21,21 @@ public record SmashPlayer(
 ) {
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SmashPlayer that = (SmashPlayer) o;
+
+        return playerId == that.playerId;
+    }
+
+    @Override
+    public int hashCode() {
+        return playerId;
+    }
+
+    @Override
     public String toString() {
         return "SmashPlayer{" +
                 "playerId=" + playerId +
