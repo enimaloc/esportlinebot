@@ -273,6 +273,10 @@ public class SmashBros {
             }
         }
         long end = System.currentTimeMillis();
+        if (player == null) {
+            LOGGER.debug("Player {} not found in {}", id, game);
+            throw new SQLException("Player " + id + " not found in " + game);
+        }
         LOGGER.debug("Got player {} of {} in {}ms", player.playerId(), game, end - start);
         return player;
     }
