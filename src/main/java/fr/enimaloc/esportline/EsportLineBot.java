@@ -49,7 +49,7 @@ public class EsportLineBot {
     private final File dbDir = new File("data");
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
-    public EsportLineBot(JDA jda) {
+    public EsportLineBot(JDA jda) throws SQLException, IOException {
         this.jda = jda;
         this.jda.addEventListener(new PaginationMessage.PaginationListener());
         this.dbDir.mkdirs();
@@ -118,7 +118,7 @@ public class EsportLineBot {
         this.enutils.upsertAll(1038139412753694814L);
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, SQLException, IOException {
         new EsportLineBot(JDABuilder.createDefault(System.getenv("DISCORD_TOKEN"),
                         GatewayIntent.MESSAGE_CONTENT,
                         GatewayIntent.GUILD_EMOJIS_AND_STICKERS,

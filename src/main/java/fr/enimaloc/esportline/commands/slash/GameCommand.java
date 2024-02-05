@@ -1,8 +1,14 @@
 package fr.enimaloc.esportline.commands.slash;
 
 import fr.enimaloc.enutils.jda.register.annotation.Slash;
+import fr.enimaloc.esportline.api.smash.SmashRegistry;
 import fr.enimaloc.esportline.commands.slash.game.wakfu.Wakfu;
 import fr.enimaloc.esportline.commands.slash.game.wakfu.WakfuAdmin;
+import fr.enimaloc.esportline.commands.slash.smash.melee.SuperSmashBrosMelee;
+import fr.enimaloc.esportline.commands.slash.smash.ultimate.SuperSmashBrosUltimate;
+
+import java.io.IOException;
+import java.sql.SQLException;
 
 @Slash(name = "game", description = "Get information about a game")
 public class GameCommand {
@@ -39,15 +45,21 @@ public class GameCommand {
 //    public Trackmania trackmania = new Trackmania();
 //    @Slash.Sub.GroupProvider
 //    public Fifa fifa = new Fifa();
-//    @Slash.Sub.GroupProvider
-//    public SuperSmashBros superSmashBros = new SuperSmashBros();
+    @Slash.Sub.GroupProvider
+    public SuperSmashBrosUltimate smashBrosUltimate;
+    @Slash.Sub.GroupProvider
+    public SuperSmashBrosMelee smashBrosMelee;
     @Slash.Sub.GroupProvider
     public Wakfu wakfu;
     @Slash.Sub.GroupProvider
     public WakfuAdmin wakfuAdmin;
 
-    public GameCommand(Wakfu wakfu, WakfuAdmin wakfuAdmin) {
+    public GameCommand(Wakfu wakfu, WakfuAdmin wakfuAdmin) throws SQLException, IOException {
         this.wakfu = wakfu;
         this.wakfuAdmin = wakfuAdmin;
+
+        SmashRegistry registry = new SmashRegistry();
+        this.smashBrosUltimate = new SuperSmashBrosUltimate(registry);
+        this.smashBrosMelee = new SuperSmashBrosMelee();
     }
 }
