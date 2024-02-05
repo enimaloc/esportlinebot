@@ -5,9 +5,6 @@ import fr.enimaloc.esportline.api.github.LatestGithubRelease;
 import fr.enimaloc.esportline.api.smash.sql.PlayerTable;
 import fr.enimaloc.esportline.api.smash.sql.SetTable;
 import fr.enimaloc.esportline.api.smash.sql.TournamentTable;
-import fr.enimaloc.esportline.utils.BenchmarkUtils;
-import fr.enimaloc.esportline.utils.SqlUtils;
-import fr.enimaloc.esportline.utils.function.ThrowableSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.JDBC;
@@ -23,13 +20,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class SmashBros {
-    public static final Logger LOGGER = LoggerFactory.getLogger(SmashBros.class);
+public class SmashRegistry {
+    public static final Logger LOGGER = LoggerFactory.getLogger(SmashRegistry.class);
     public static final String GITHUB_ORG = "smashdata";
     public static final String GITHUB_REPO = "ThePlayerDatabase";
     private File smashData = new File("data/smash");
@@ -38,7 +34,7 @@ public class SmashBros {
     private Map<SmashGame, TournamentTable> tournamentTable = new HashMap<>();
     private Map<SmashGame, SetTable> setTable = new HashMap<>();
 
-    public SmashBros() throws SQLException, IOException {
+    public SmashRegistry() throws SQLException, IOException {
         if (!smashData.exists()) {
             smashData.mkdirs();
         }

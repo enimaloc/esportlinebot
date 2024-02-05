@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.sql.SQLException;
 
 public record SmashSets(
-        SmashBros origin,
-        SmashBros.SmashGame game,
+        SmashRegistry origin,
+        SmashRegistry.SmashGame game,
         boolean incomplete, String key,
         String tournamentKey,
         String winnerId,

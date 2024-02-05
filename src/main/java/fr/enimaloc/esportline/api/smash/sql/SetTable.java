@@ -1,12 +1,8 @@
 package fr.enimaloc.esportline.api.smash.sql;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.ObjectCodec;
-import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.cfg.DatatypeFeature;
-import fr.enimaloc.esportline.api.smash.SmashBros;
+import fr.enimaloc.esportline.api.smash.SmashRegistry;
 import fr.enimaloc.esportline.api.smash.SmashSets;
 import fr.enimaloc.esportline.api.sql.Column;
 import fr.enimaloc.esportline.api.sql.Table;
@@ -42,10 +38,10 @@ public class SetTable extends Table {
     public static final Column<SmashSets.GameData> COLUMN_GAME_DATA = new Column("game_data", SmashSets.GameData.class);
     private static final ObjectMapper MAPPER = new ObjectMapper().enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
 
-    private final SmashBros origin;
-    private final SmashBros.SmashGame game;
+    private final SmashRegistry origin;
+    private final SmashRegistry.SmashGame game;
 
-    public SetTable(SmashBros origin, SmashBros.SmashGame game) throws SQLException, IOException {
+    public SetTable(SmashRegistry origin, SmashRegistry.SmashGame game) throws SQLException, IOException {
         super(origin.getConnection(game), "sets");
         this.origin = origin;
         this.game = game;

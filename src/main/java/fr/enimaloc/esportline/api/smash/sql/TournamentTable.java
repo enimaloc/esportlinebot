@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.enimaloc.esportline.api.smash.GPSLocation;
 import fr.enimaloc.esportline.api.smash.Location;
-import fr.enimaloc.esportline.api.smash.SmashBros;
+import fr.enimaloc.esportline.api.smash.SmashRegistry;
 import fr.enimaloc.esportline.api.smash.SmashTournament;
 import fr.enimaloc.esportline.api.sql.Column;
 import fr.enimaloc.esportline.api.sql.Table;
@@ -50,14 +50,14 @@ public class TournamentTable extends Table {
     public static final Column<Float> COLUMN_LAT = new Column<>("lat", Float.class);
     public static final Column<Float> COLUMN_LNG = new Column<>("lng", Float.class);
 
-    private final SmashBros origin;
-    private final SmashBros.SmashGame game;
+    private final SmashRegistry origin;
+    private final SmashRegistry.SmashGame game;
 
-    public TournamentTable(SmashBros origin, SmashBros.SmashGame game) throws SQLException, IOException {
+    public TournamentTable(SmashRegistry origin, SmashRegistry.SmashGame game) throws SQLException, IOException {
         this(origin.getConnection(game), origin, game);
     }
 
-    TournamentTable(Connection connection, SmashBros origin, SmashBros.SmashGame game) {
+    TournamentTable(Connection connection, SmashRegistry origin, SmashRegistry.SmashGame game) {
         super(connection, "tournament_info");
         this.origin = origin;
         this.game = game;

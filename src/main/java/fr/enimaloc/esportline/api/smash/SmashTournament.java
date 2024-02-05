@@ -7,8 +7,8 @@ import java.sql.SQLException;
 import java.util.List;
 
 public record SmashTournament(
-        SmashBros origin,
-        SmashBros.SmashGame game,
+        SmashRegistry origin,
+        SmashRegistry.SmashGame game,
         boolean incomplete,
         String key,
         String cleanedName,
@@ -27,7 +27,7 @@ public record SmashTournament(
         boolean online,
         GPSLocation gpsLocation
 ) {
-    public record Placing(SmashBros origin, SmashBros.SmashGame game, String playerId, int placings) {
+    public record Placing(SmashRegistry origin, SmashRegistry.SmashGame game, String playerId, int placings) {
         public SmashPlayer getPlayer() throws SQLException, IOException {
             return origin.getPlayerTable(game).getPlayerById(playerId);
         }

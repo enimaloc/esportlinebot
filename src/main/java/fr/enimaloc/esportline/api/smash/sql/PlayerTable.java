@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.enimaloc.esportline.api.smash.Location;
-import fr.enimaloc.esportline.api.smash.SmashBros;
+import fr.enimaloc.esportline.api.smash.SmashRegistry;
 import fr.enimaloc.esportline.api.smash.SmashPlayer;
 import fr.enimaloc.esportline.api.sql.Column;
 import fr.enimaloc.esportline.api.sql.Table;
@@ -46,14 +46,14 @@ public class PlayerTable extends Table {
     public static final Column<String> COLUMN_CHARACTERS = new Column<>("characters", String.class);
     public static final Column<String> COLUMN_ALIAS = new Column<>("alias", String.class);
 
-    private final SmashBros origin;
-    private final SmashBros.SmashGame game;
+    private final SmashRegistry origin;
+    private final SmashRegistry.SmashGame game;
 
-    public PlayerTable(SmashBros origin, SmashBros.SmashGame game) throws SQLException, IOException {
+    public PlayerTable(SmashRegistry origin, SmashRegistry.SmashGame game) throws SQLException, IOException {
         this(origin.getConnection(game), origin, game);
     }
 
-    PlayerTable(Connection sql, SmashBros origin, SmashBros.SmashGame game) {
+    PlayerTable(Connection sql, SmashRegistry origin, SmashRegistry.SmashGame game) {
         super(sql, "players");
         this.origin = origin;
         this.game = game;

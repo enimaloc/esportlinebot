@@ -6,13 +6,12 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public record SmashPlayer(
-        SmashBros origin,
-        SmashBros.SmashGame game,
+        SmashRegistry origin,
+        SmashRegistry.SmashGame game,
         boolean incomplete,
         int playerId,
         String tag,
@@ -66,12 +65,12 @@ public record SmashPlayer(
         }
     }
 
-    public record Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, String key, int placing, int seed, boolean dq) {
-        public Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, String json) throws JsonProcessingException {
+    public record Placings(SmashRegistry origin, SmashRegistry.SmashGame game, int playerId, String key, int placing, int seed, boolean dq) {
+        public Placings(SmashRegistry origin, SmashRegistry.SmashGame game, int playerId, String json) throws JsonProcessingException {
             this(origin, game, playerId, new JsonMapper().readTree(json));
         }
 
-        public Placings(SmashBros origin, SmashBros.SmashGame game, int playerId, JsonNode json) {
+        public Placings(SmashRegistry origin, SmashRegistry.SmashGame game, int playerId, JsonNode json) {
             this(origin, game, playerId, json.get("key").asText(), json.get("placing").asInt(), json.get("seed").asInt(), json.get("dq").asBoolean());
         }
 
