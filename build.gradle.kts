@@ -41,7 +41,7 @@ dependencies {
     implementation("com.theokanning.openai-gpt3-java:service:0.18.2")
     implementation("org.apache.commons:commons-text:1.11.0")
 
-    testImplementation(platform("org.junit:junit-bom:5.10.1"))
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
