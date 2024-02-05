@@ -8,7 +8,7 @@ import java.sql.SQLException;
 public record SmashSets(
         SmashBros origin,
         SmashBros.SmashGame game,
-        String key,
+        boolean incomplete, String key,
         String tournamentKey,
         String winnerId,
         String player1Id,
@@ -23,19 +23,19 @@ public record SmashSets(
         GameData[] gameData
 ) {
     public SmashTournament getTournament() throws SQLException, IOException {
-        return origin.getTournament(game, tournamentKey);
+        return origin.getTournamentTable(game).getTournamentByKey(tournamentKey);
     }
 
     public SmashPlayer getWinner() throws SQLException, IOException {
-        return origin.getPlayer(game, winnerId);
+        return origin.getPlayerTable(game).getPlayersByIdOrTag(winnerId).get(0);
     }
 
     public SmashPlayer getPlayer1() throws SQLException, IOException {
-        return origin.getPlayer(game, player1Id);
+        return origin.getPlayerTable(game).getPlayersByIdOrTag(player1Id).get(0);
     }
 
     public SmashPlayer getPlayer2() throws SQLException, IOException {
-        return origin.getPlayer(game, player2Id);
+        return origin.getPlayerTable(game).getPlayersByIdOrTag(player2Id).get(0);
     }
 
     public SmashPlayer getLooser() throws SQLException, IOException {
@@ -47,10 +47,10 @@ public record SmashSets(
     }
 
     public record GameData(
-            @JsonAlias("winner_id") int winnerId,
-            @JsonAlias("loser_id") int loserId,
-            @JsonAlias("winner_score") int winnerScore,
-            @JsonAlias("loser_score") int loserScore,
+            @JsonAlias("winner_id") String winnerId,
+            @JsonAlias("loser_id") String loserId,
+            @JsonAlias("winner_score") String winnerScore,
+            @JsonAlias("loser_score") String loserScore,
             @JsonAlias("winner_char") String winnerCharacter,
             @JsonAlias("loser_char") String loserCharacter,
             String stage

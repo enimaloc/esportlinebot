@@ -13,6 +13,7 @@ import java.util.List;
 public record SmashPlayer(
         SmashBros origin,
         SmashBros.SmashGame game,
+        boolean incomplete,
         int playerId,
         String tag,
         String[] allTags,
@@ -42,7 +43,8 @@ public record SmashPlayer(
     @Override
     public String toString() {
         return "SmashPlayer{" +
-                "playerId=" + playerId +
+                "incomplete=" + incomplete +
+                ", playerId=" + playerId +
                 ", tag='" + tag + '\'' +
                 ", allTags=" + Arrays.toString(allTags) +
                 ", prefixes=" + Arrays.toString(prefixes) +
@@ -74,26 +76,31 @@ public record SmashPlayer(
         }
 
         public SmashTournament getTournament() throws SQLException, IOException {
-            return origin.getTournament(game, key);
+            return origin.getTournamentTable(game).getTournamentByKey(key);
         }
 
         public List<SmashSets> getSets() throws SQLException, IOException {
-            return origin.getSetsForTournamentAndPlayer(game, key, String.valueOf(playerId));
+            return origin.getSetTable(game).getSetsForTournamentAndPlayer(key, String.valueOf(playerId));
         }
     }
 
     public record Character(String name, int usage) {
     }
 
-    public List<SmashTournament> getTournaments() throws SQLException, IOException {
-        List<SmashTournament> tournaments = new ArrayList<>();
-        for (Placings placing : placings) {
-            tournaments.add(origin.getTournament(game, placing.key()));
-        }
-        return tournaments;
+    public SmashPlayer complete() throws SQLException, JsonProcessingException {
+        if (!incomplete) return this;
+        return origin.getPlayerTable(game).getPlayerById(String.valueOf(playerId));
     }
 
-    public List<SmashSets> getSets() throws SQLException, IOException {
-        return origin.getSetsForPlayer(game, String.valueOf(playerId));
-    }
+//    public List<SmashTournament> getTournaments() throws SQLException, IOException {
+//        List<SmashTournament> tournaments = new ArrayList<>();
+//        for (Placings placing : placings) {
+//            tournaments.add(origin.getTournament(game, placing.key()));
+//        }
+//        return tournaments;
+//    }
+//
+//    public List<SmashSets> getSets() throws SQLException, IOException {
+//        return origin.getSetsForPlayer(game, String.valueOf(playerId));
+//    }
 }
