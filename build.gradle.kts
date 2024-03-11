@@ -22,7 +22,7 @@ repositories {
 
 dependencies {
     // Base dependencies
-    implementation("net.dv8tion:JDA:5.0.0-beta.20")
+    implementation("net.dv8tion:JDA:5.0.0-beta.21")
     implementation("fr.enimaloc:jda-enutils:0.4.1")
     implementation("org.slf4j:slf4j-simple:2.0.11")
     implementation("commons-io:commons-io:2.15.1")
