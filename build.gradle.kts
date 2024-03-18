@@ -29,7 +29,7 @@ dependencies {
     implementation("fr.enimaloc.night-config:toml:3.7.0")
     implementation("org.xerial:sqlite-jdbc:3.45.1.0")
     implementation("fr.enimaloc:matcher:0.1.5")
-    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.17.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.16.1")
