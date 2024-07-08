@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("org.sonarqube") version "4.4.1.3373"
+    id("org.sonarqube") version "5.1.0.4882"
 }
 
 group = "fr.enimaloc"
